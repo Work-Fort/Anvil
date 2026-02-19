@@ -141,6 +141,8 @@ jobs:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
           printf '%s' "$SIGNING_KEY" > /tmp/signing-key.asc
+          rm -f ~/.local/share/anvil/keys/signing-key.asc
+          rm -f ~/.local/share/anvil/keys/signing-key-private.asc
           ./build/anvil signing import-key /tmp/signing-key.asc
           rm -f /tmp/signing-key.asc
 
