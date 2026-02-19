@@ -30,6 +30,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install Task
+        uses: go-task/setup-task@v1
+
+      - name: Build CLI
+        run: task go:build
+
       - name: Get kernel version
         id: get_version
         env:
@@ -62,32 +73,28 @@ jobs:
             echo "release_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check if checksums are available
+      - name: Check kernel version buildability
         id: check_checksums
         if: steps.check_release.outputs.release_exists == 'false'
         env:
           KERNEL_VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-          MAJOR_VERSION="${KERNEL_VERSION%%.*}"
-          CHECKSUMS_URL="https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VERSION}.x/sha256sums.asc"
+          set +e
+          ./build/anvil kernel version-check "$KERNEL_VERSION" --json > /tmp/version-check.json 2>&1
+          EXIT_CODE=$?
+          set -e
 
-          # Download the checksums file and capture HTTP status
-          HTTP_STATUS=$(curl -s -o /tmp/sha256sums.asc -w "%{http_code}" "$CHECKSUMS_URL")
-
-          if [ "$HTTP_STATUS" != "200" ]; then
-            # Cannot reach kernel.org or invalid major version
-            echo "::error title=Build Failed::Cannot fetch checksums for kernel ${KERNEL_VERSION} (HTTP ${HTTP_STATUS})"
-            echo "checksums_available=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-          if grep -q "linux-${KERNEL_VERSION}.tar.xz" /tmp/sha256sums.asc; then
-            echo "Checksums are available, can proceed with build"
+          if [ "$EXIT_CODE" -eq 0 ]; then
             echo "checksums_available=true" >> $GITHUB_OUTPUT
-          else
-            # Checksums file exists but version not yet listed (timing issue right after release)
-            echo "::notice title=Build Skipped::Checksums not yet available for kernel ${KERNEL_VERSION}. This is normal right after a kernel release. The build will be retried on the next scheduled run."
+          elif jq -e '.buildable == false' /tmp/version-check.json > /dev/null 2>&1; then
+            # CLI produced valid JSON with buildable=false -- normal skip
+            echo "::notice title=Build Skipped::Kernel ${KERNEL_VERSION} is not yet buildable. Will retry on next scheduled run."
             echo "checksums_available=false" >> $GITHUB_OUTPUT
+          else
+            # No valid JSON produced -- infrastructure error (network failure, etc.)
+            echo "::error title=Build Failed::Cannot check kernel ${KERNEL_VERSION} buildability"
+            cat /tmp/version-check.json
+            exit 1
           fi
 
       - name: Decide if we should build
