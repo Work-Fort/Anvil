@@ -30,16 +30,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Restore cached anvil binary
+        id: restore_anvil
+        uses: actions/cache/restore@v4
         with:
-          go-version: '1.25'
+          path: build/anvil
+          key: anvil-cli-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            anvil-cli-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: Install Task
-        uses: go-task/setup-task@v1
+      - name: Fail if cache miss
+        if: steps.restore_anvil.outputs.cache-hit != 'true'
+        run: |
+          echo "::error title=Cache Miss::No cached anvil binary found. Push a commit to master to build and cache the binary via the Release CLI workflow."
+          exit 1
 
-      - name: Build CLI
-        run: task go:build
+      - name: Make anvil binary executable
+        run: chmod +x build/anvil
 
       - name: Get kernel version
         id: get_version
@@ -145,7 +152,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/anvil/build-kernel/build/linux-*.tar.xz
-          key: kernel-source-${{ needs.check-version.outputs.kernel_version }}
+          key: kernel-source-${{ matrix.arch }}-${{ needs.check-version.outputs.kernel_version }}
 
       - name: Build CLI
         run: task go:build
