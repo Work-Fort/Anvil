@@ -1,0 +1,64 @@
+# Build directories
+build/
+artifacts/
+bin/
+.task/
+
+# Local archive of signed releases (local-first development)
+# Automatically populated by sign-artifacts.sh
+# Mirrors GitHub release structure: archive/{version}/
+# Contains: signed kernels, checksums, signatures, public key
+archive/
+
+# PGP signing keys
+# (managed by keys/.gitignore)
+.gnupg/
+
+# Task runner (allow local overrides)
+[Tt]askfile.y*ml
+
+# Kernel source tarballs
+*.tar.xz
+*.tar.gz
+*.tgz
+
+# Compressed kernels
+vmlinux*.xz
+Image*.xz
+
+# Checksums
+*.sha256
+SHA256SUMS
+
+# Kernel binaries
+vmlinux
+vmlinux-*
+Image
+Image-*
+
+# Kernel build artifacts
+*.o
+*.ko
+*.o.cmd
+*.ko.cmd
+.tmp_versions/
+Module.symvers
+modules.builtin
+modules.order
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+.*.swp
+
+/playground/

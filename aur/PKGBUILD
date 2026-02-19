@@ -1,0 +1,50 @@
+# Maintainer: Your Name <your.email@example.com>
+# SPDX-License-Identifier: Apache-2.0
+
+# Maintainer: Your Name <your.email@example.com>
+# SPDX-License-Identifier: Apache-2.0
+
+pkgname=cracker-barrel
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Firecracker kernel and tooling manager"
+arch=('x86_64' 'aarch64')
+url="https://github.com/get-virgil/cracker-barrel"
+license=('Apache-2.0')
+depends=('libguestfs')
+makedepends=('go' 'git')
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/cli-v${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${pkgname}-cli-v${pkgver}"
+
+    export CGO_ENABLED=1
+    export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+
+    # Build with DISABLE_UPDATE=true for package manager installations
+    go build \
+        -ldflags "-linkmode external -extldflags \"${LDFLAGS}\" \
+                  -X github.com/get-virgil/cracker-barrel/cmd.Version=${pkgver} \
+                  -X github.com/get-virgil/cracker-barrel/cmd.DisableUpdate=true \
+                  -w -s" \
+        -o cracker-barrel
+}
+
+check() {
+    cd "${pkgname}-cli-v${pkgver}"
+    go test ./...
+}
+
+package() {
+    cd "${pkgname}-cli-v${pkgver}"
+
+    # Install binary
+    install -Dm755 cracker-barrel "${pkgdir}/usr/bin/cracker-barrel"
+
+    # Install license
+    install -Dm644 LICENSE.md "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+    # Install documentation
+    install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+}

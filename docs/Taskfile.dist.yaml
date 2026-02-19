@@ -1,0 +1,162 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  VENV: .venv
+  PIP: "{{.VENV}}/bin/pip"
+  SPHINX_BUILD: "{{.VENV}}/bin/sphinx-build"
+  SPHINX_AUTOBUILD: "{{.VENV}}/bin/sphinx-autobuild"
+  SPHINX_OPTS: '{{.SPHINX_OPTS | default ""}}'
+
+tasks:
+
+  install:
+    desc: Install documentation dependencies
+    deps: [create-venv]
+    silent: true
+    cmds:
+      - "{{.PIP}} install -r requirements.txt"
+    status:
+      - test -f {{.SPHINX_BUILD}}
+      - test -f {{.SPHINX_AUTOBUILD}}
+
+  landing-install:
+    desc: Install landing page dependencies
+    dir: landing
+    silent: true
+    cmds:
+      - npm ci
+    status:
+      - test -d node_modules
+
+  landing-build:
+    desc: Build landing page
+    deps: [landing-install]
+    dir: landing
+    silent: true
+    cmds:
+      - npm run build
+    sources:
+      - src/**/*
+      - public/**/*
+      - index.html
+      - vite.config.ts
+      - package.json
+    generates:
+      - dist/**/*
+
+  sphinx-build:
+    desc: Build Sphinx documentation
+    deps: [install]
+    silent: true
+    cmds:
+      - "{{.SPHINX_BUILD}} {{.SPHINX_OPTS}} -b html source docs"
+
+  sphinx-rebuild:
+    desc: Rebuild Sphinx docs and update site directory (for live development)
+    silent: true
+    cmds:
+      - task: sphinx-clean
+      - task: sphinx-build
+      - mkdir -p site/docs
+      - cp -r docs/* site/docs/
+      - cp docs/install-anvil.sh site/install-anvil.sh
+
+  landing-rebuild:
+    desc: Rebuild landing page and update site directory (for live development)
+    silent: true
+    cmds:
+      - task: landing-clean
+      - task: landing-build
+      - mkdir -p site
+      - cp -r landing/dist/* site/
+
+  rebuild:
+    desc: Rebuild both Sphinx docs and landing page and update site directory (for live development)
+    silent: true
+    cmds:
+      - task: sphinx-rebuild
+      - task: landing-rebuild
+
+  combine:
+    desc: Combine landing page and docs into site directory
+    deps: [landing-build, sphinx-build]
+    silent: true
+    cmds:
+      - rm -rf site
+      - mkdir -p site
+      - cp -r landing/dist/* site/
+      - mkdir -p site/docs
+      - cp -r docs/* site/docs/
+      - cp docs/install-anvil.sh site/install-anvil.sh
+
+  build:
+    desc: Build complete documentation site (landing + docs)
+    silent: true
+    deps: [combine]
+
+  sphinx-clean:
+    desc: Clean Sphinx documentation build directory
+    silent: true
+    cmds:
+      - rm -rf docs/
+
+  landing-clean:
+    desc: Clean landing page build directory
+    silent: true
+    cmds:
+      - rm -rf landing/dist/
+
+  clean:
+    desc: Clean all build directories
+    deps: [sphinx-clean, landing-clean]
+    silent: true
+    cmds:
+      - rm -rf site/
+
+  linkcheck:
+    desc: Check for broken links
+    deps: [install]
+    silent: true
+    cmds:
+      - "{{.SPHINX_BUILD}} {{.SPHINX_OPTS}} -b linkcheck source docs/linkcheck"
+
+  serve:
+    desc: Serve full site with landing page (run 'task docs:build' first, then use 'task docs:sphinx-rebuild' or 'task docs:landing-rebuild' to update)
+    silent: true
+    cmds:
+      - python -m http.server 8000 --directory site
+
+  serve-dev:
+    desc: Serve docs with live auto-reload (bypasses landing page)
+    deps: [install]
+    silent: true
+    cmds:
+      - "{{.SPHINX_AUTOBUILD}} source docs --port 8000"
+
+  serve-landing:
+    desc: Serve landing page with Vite dev server
+    dir: landing
+    deps: [landing-install]
+    silent: true
+    cmds:
+      - npm run dev
+
+  ci:
+    desc: CI checks for documentation
+    silent: true
+    cmds:
+      - task: build
+        vars: { SPHINX_OPTS: -W }
+      - task: linkcheck
+        vars: { SPHINX_OPTS: -W }
+
+  create-venv:
+    desc: Create the Python virtual environment
+    internal: true
+    cmds:
+      - python -m venv .venv
+    status:
+      - test -f {{.VENV}}/bin/python
+
+

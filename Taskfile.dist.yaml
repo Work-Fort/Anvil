@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: '3'
+
+includes:
+  go:
+    taskfile: tasks/go
+    dir: .
+  libguestfs:
+    taskfile: tasks/libguestfs
+    dir: .
+  docs:
+    taskfile: docs
+    dir: ./docs
+
+tasks:
+  default:
+    desc: Show available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  build:
+    desc: Build CLI and documentation
+    silent: true
+    cmds:
+      - task: go:build
+      - task: docs:build
+
+  clean:
+    desc: Remove all build artifacts
+    silent: true
+    cmds:
+      - task: go:clean
+      - task: docs:clean
+
+  ci:
+    desc: Run all CI checks (Go + docs)
+    silent: true
+    cmds:
+      - task: go:ci
+      - task: docs:linkcheck
+
+  install:
+    desc: Install CLI to system
+    silent: true
+    cmds:
+      - task: go:install

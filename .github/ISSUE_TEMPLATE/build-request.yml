@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Kernel Build Request
+description: Request a build for a specific kernel version
+title: "[BUILD] Kernel version: "
+labels: ["build-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Kernel Build Request
+
+        Request a specific kernel version to be built and published as a release.
+
+        **Important:**
+        - Only stable kernel versions from kernel.org are supported
+        - Invalid requests will be tracked
+        - Users with 5+ invalid requests will be automatically banned
+
+  - type: input
+    id: kernel_version
+    attributes:
+      label: Kernel Version
+      description: The kernel version to build (e.g., 6.1.75, 6.6.15)
+      placeholder: "6.1.75"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How urgently do you need this build?
+      options:
+        - Normal
+        - Urgent
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: Reason (Optional)
+      description: Why do you need this specific kernel version?
+      placeholder: "I need this version for compatibility with..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Acknowledgment
+      description: Please confirm you understand the build request policy
+      options:
+        - label: I have verified this kernel version exists on kernel.org
+          required: true
+        - label: I understand invalid requests count towards the 5-request limit
+          required: true

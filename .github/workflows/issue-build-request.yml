@@ -1,0 +1,252 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Handle Kernel Build Requests
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  process-build-request:
+    name: Process Build Request
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'build-request')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Parse kernel version from issue
+        id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const issueBody = process.env.ISSUE_BODY;
+            const issueTitle = process.env.ISSUE_TITLE;
+
+            // Try to extract version from structured issue form
+            let version = null;
+            const versionMatch = issueBody.match(/### Kernel Version\s+([0-9]+\.[0-9]+\.?[0-9]*)/);
+            if (versionMatch) {
+              version = versionMatch[1];
+            } else {
+              // Fallback: try title
+              const titleMatch = issueTitle.match(/([0-9]+\.[0-9]+\.?[0-9]*)/);
+              if (titleMatch) {
+                version = titleMatch[1];
+              }
+            }
+
+            if (!version) {
+              core.setFailed('Could not parse kernel version from issue');
+              return;
+            }
+
+            core.setOutput('version', version);
+            console.log(`Parsed kernel version: ${version}`);
+
+      - name: Check if user is banned
+        id: check_ban
+        env:
+          USERNAME: ${{ github.event.issue.user.login }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const username = process.env.USERNAME;
+
+            // Search for invalid kernel version issues by this user
+            const query = `repo:${context.repo.owner}/${context.repo.repo} author:${username} label:invalid-kernel-version is:closed`;
+
+            const result = await github.rest.search.issuesAndPullRequests({
+              q: query,
+              per_page: 100
+            });
+
+            const invalidCount = result.data.total_count;
+            console.log(`User ${username} has ${invalidCount} invalid build requests`);
+
+            if (invalidCount >= 5) {
+              core.setOutput('banned', 'true');
+              core.setOutput('invalid_count', invalidCount.toString());
+
+              // Close issue and ban
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                state: 'closed',
+                labels: ['banned', 'invalid-kernel-version']
+              });
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: `## 🚫 User Banned
+
+                @${username} has been automatically banned for exceeding the invalid build request limit.
+
+                **Invalid requests:** ${invalidCount}/5
+
+                This user has repeatedly submitted invalid kernel version requests. Future build requests from this user will be automatically closed.
+
+                If you believe this is an error, please contact the repository maintainers.`
+              });
+
+              core.setFailed('User is banned');
+            } else {
+              core.setOutput('banned', 'false');
+              core.setOutput('invalid_count', invalidCount.toString());
+            }
+
+      - name: Validate kernel version
+        id: validate
+        if: steps.check_ban.outputs.banned == 'false'
+        env:
+          KERNEL_VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          echo "Validating kernel version: $KERNEL_VERSION"
+
+          # Fetch kernel.org releases
+          RELEASES=$(curl -s https://www.kernel.org/releases.json)
+
+          # Check if version exists in any release type
+          if echo "$RELEASES" | jq -e --arg version "$KERNEL_VERSION" '
+            .releases[] | select(.version == $version)
+          ' > /dev/null; then
+            echo "✓ Valid kernel version: $KERNEL_VERSION"
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Invalid kernel version: $KERNEL_VERSION"
+            echo "valid=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Handle invalid kernel version
+        if: steps.check_ban.outputs.banned == 'false' && steps.validate.outputs.valid == 'false'
+        env:
+          KERNEL_VERSION: ${{ steps.parse.outputs.version }}
+          USERNAME: ${{ github.event.issue.user.login }}
+          INVALID_COUNT: ${{ steps.check_ban.outputs.invalid_count }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const version = process.env.KERNEL_VERSION;
+            const username = process.env.USERNAME;
+            const invalidCount = parseInt(process.env.INVALID_COUNT) + 1;
+
+            // Close and label issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              state: 'closed',
+              labels: ['invalid-kernel-version']
+            });
+
+            // Add comment
+            const warningMessage = invalidCount >= 4
+              ? `\n\n⚠️ **WARNING:** You have ${invalidCount}/5 invalid requests. One more invalid request will result in an automatic ban.`
+              : `\n\nInvalid requests: ${invalidCount}/5`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## ❌ Invalid Kernel Version
+
+              The requested kernel version **${version}** does not exist on kernel.org.
+
+              Please verify the version exists at https://kernel.org and submit a new request.
+
+              **Valid version format examples:**
+              - Stable: 6.1.75, 6.6.15
+              - Mainline: 6.8-rc1
+              - Longterm: 5.15.148${warningMessage}`
+            });
+
+            core.setFailed('Invalid kernel version');
+
+      - name: Trigger kernel build
+        if: steps.check_ban.outputs.banned == 'false' && steps.validate.outputs.valid == 'true'
+        env:
+          KERNEL_VERSION: ${{ steps.parse.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const version = process.env.KERNEL_VERSION;
+
+            // Check if release already exists
+            let releaseExists = false;
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: `v${version}`
+              });
+              releaseExists = true;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            if (releaseExists) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: `## ℹ️ Release Already Exists
+
+                Kernel version **${version}** has already been built and published.
+
+                Download it here: https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${version}`
+              });
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                state: 'closed',
+                labels: ['build-request', 'already-exists']
+              });
+
+              return;
+            }
+
+            // Trigger build workflow
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-kernel.yml',
+              ref: 'master',
+              inputs: {
+                kernel_version: version
+              }
+            });
+
+            // Update issue
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## ✅ Build Triggered
+
+              Kernel version **${version}** build has been triggered.
+
+              - [View workflow runs](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/build-kernel.yml)
+              - This issue will be automatically closed once the build completes
+
+              The release will be available at: https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${version}`
+            });
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: ['build-in-progress']
+            });

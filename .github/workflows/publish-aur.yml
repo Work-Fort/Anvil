@@ -1,0 +1,140 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Publish to AUR
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'CLI release tag (e.g., cli-v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Update AUR Package
+    runs-on: ubuntu-latest
+    # Only run for CLI releases, not kernel releases
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/cli-v')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+
+          # Strip cli-v prefix (cli-v1.2.3 -> 1.2.3)
+          VERSION="${TAG#cli-v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Publishing version: ${VERSION} (tag: ${TAG})"
+
+      - name: Download source tarball and calculate checksum
+        id: checksums
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Download source tarball from GitHub
+          wget "https://github.com/${REPO}/archive/refs/tags/${TAG}.tar.gz" \
+            -O source.tar.gz
+
+          # Calculate checksum of source tarball
+          SOURCE_SHA=$(sha256sum source.tar.gz | awk '{print $1}')
+
+          if [ -z "$SOURCE_SHA" ]; then
+            echo "Error: Could not calculate checksum"
+            exit 1
+          fi
+
+          echo "source=${SOURCE_SHA}" >> $GITHUB_OUTPUT
+          echo "Source tarball checksum: ${SOURCE_SHA}"
+
+      - name: Clone AUR repository
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          # Configure SSH for AUR
+          mkdir -p ~/.ssh
+          echo "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+
+          # Configure SSH to use the key for AUR
+          cat >> ~/.ssh/config << EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            User aur
+          EOF
+
+          # Add AUR to known hosts
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+
+          # Clone AUR repository
+          git clone ssh://aur@aur.archlinux.org/anvil.git aur-repo
+
+      - name: Update PKGBUILD
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_SHA: ${{ steps.checksums.outputs.source }}
+        run: |
+          cd aur-repo
+
+          # Update version in PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+
+          # Reset pkgrel to 1 for new version
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+
+          # Update source tarball checksum
+          sed -i "s/^sha256sums=.*/sha256sums=('${SOURCE_SHA}')/" PKGBUILD
+
+          echo "Updated PKGBUILD:"
+          cat PKGBUILD
+
+      - name: Generate .SRCINFO
+        run: |
+          cd aur-repo
+
+          # Install tools needed to generate .SRCINFO
+          docker run --rm -v "$PWD:/pkg" archlinux:latest bash -c "
+            pacman -Sy --noconfirm binutils fakeroot
+            cd /pkg
+            sudo -u nobody makepkg --printsrcinfo > .SRCINFO
+          "
+
+          echo "Generated .SRCINFO:"
+          cat .SRCINFO
+
+      - name: Commit and push to AUR
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd aur-repo
+
+          # Configure git
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Commit changes
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to ${VERSION}"
+
+          # Push to AUR
+          git push origin master
+
+          echo "Successfully published anvil ${VERSION} to AUR"

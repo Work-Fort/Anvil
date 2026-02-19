@@ -1,0 +1,381 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Build Firecracker-Compatible Kernel
+
+on:
+  # Run every 4 hours to catch new kernel releases quickly
+  schedule:
+    - cron: '0 */4 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      kernel_version:
+        description: 'Kernel version to build (e.g., 6.18.8). Leave empty for latest stable.'
+        required: false
+        type: string
+
+permissions:
+  contents: write  # Required for creating releases
+  issues: write    # Required for closing build request issues
+
+jobs:
+  check-version:
+    name: Check Kernel Version
+    runs-on: ubuntu-latest
+    outputs:
+      kernel_version: ${{ steps.get_version.outputs.version }}
+      should_build: ${{ steps.decide_build.outputs.should_build }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get kernel version
+        id: get_version
+        env:
+          INPUT_KERNEL_VERSION: ${{ inputs.kernel_version }}
+        run: |
+          if [ -n "$INPUT_KERNEL_VERSION" ]; then
+            KERNEL_VERSION="$INPUT_KERNEL_VERSION"
+            echo "Using provided kernel version: ${KERNEL_VERSION}"
+          else
+            KERNEL_VERSION=$(curl -s https://www.kernel.org/releases.json | jq -r '.latest_stable.version')
+            echo "Using latest stable kernel version: ${KERNEL_VERSION}"
+          fi
+          echo "version=${KERNEL_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Check if release already exists
+        id: check_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KERNEL_VERSION: ${{ steps.get_version.outputs.version }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          TAG="v${KERNEL_VERSION}"
+
+          # Check if release exists
+          if gh release view "$TAG" --repo "$GITHUB_REPO" > /dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping build"
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Release $TAG does not exist, checking if we can build"
+            echo "release_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if checksums are available
+        id: check_checksums
+        if: steps.check_release.outputs.release_exists == 'false'
+        env:
+          KERNEL_VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          MAJOR_VERSION="${KERNEL_VERSION%%.*}"
+          CHECKSUMS_URL="https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VERSION}.x/sha256sums.asc"
+
+          # Download the checksums file and capture HTTP status
+          HTTP_STATUS=$(curl -s -o /tmp/sha256sums.asc -w "%{http_code}" "$CHECKSUMS_URL")
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            # Cannot reach kernel.org or invalid major version
+            echo "::error title=Build Failed::Cannot fetch checksums for kernel ${KERNEL_VERSION} (HTTP ${HTTP_STATUS})"
+            echo "checksums_available=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          if grep -q "linux-${KERNEL_VERSION}.tar.xz" /tmp/sha256sums.asc; then
+            echo "Checksums are available, can proceed with build"
+            echo "checksums_available=true" >> $GITHUB_OUTPUT
+          else
+            # Checksums file exists but version not yet listed (timing issue right after release)
+            echo "::notice title=Build Skipped::Checksums not yet available for kernel ${KERNEL_VERSION}. This is normal right after a kernel release. The build will be retried on the next scheduled run."
+            echo "checksums_available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Decide if we should build
+        id: decide_build
+        env:
+          RELEASE_EXISTS: ${{ steps.check_release.outputs.release_exists }}
+          CHECKSUMS_AVAILABLE: ${{ steps.check_checksums.outputs.checksums_available }}
+        run: |
+          if [ "$RELEASE_EXISTS" = "true" ]; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          elif [ "$CHECKSUMS_AVAILABLE" = "true" ]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    name: Build Kernel (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    needs: check-version
+    if: needs.check-version.outputs.should_build == 'true'
+
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install Task
+        uses: go-task/setup-task@v1
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libguestfs-dev libelf-dev flex bison bc
+
+      - name: Install cross-compilation tools
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          if [ "$ARCH" = "aarch64" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
+
+      - name: Cache kernel source
+        uses: actions/cache@v4
+        with:
+          path: .cache/anvil/build-kernel/build/linux-*.tar.xz
+          key: kernel-source-${{ needs.check-version.outputs.kernel_version }}
+
+      - name: Build CLI
+        run: task build
+
+      - name: Build kernel
+        env:
+          XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+          KERNEL_VERSION: ${{ needs.check-version.outputs.kernel_version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          ./build/anvil build-kernel \
+            --version "$KERNEL_VERSION" \
+            --arch "$ARCH"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ matrix.arch }}-${{ needs.check-version.outputs.kernel_version }}
+          path: .cache/anvil/build-kernel/artifacts/*
+          retention-days: 7
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [check-version, build]
+    if: needs.check-version.outputs.should_build == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install Task
+        uses: go-task/setup-task@v1
+
+      - name: Install libguestfs
+        run: sudo apt-get update && sudo apt-get install -y libguestfs-dev
+
+      - name: Build CLI
+        run: task build
+
+      - name: Import signing key
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          printf '%s' "$SIGNING_KEY" > /tmp/signing-key.asc
+          ./build/anvil signing import-key /tmp/signing-key.asc
+          rm -f /tmp/signing-key.asc
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Consolidate artifacts
+        env:
+          KERNEL_VERSION: ${{ needs.check-version.outputs.kernel_version }}
+        run: |
+          mkdir -p release-artifacts
+
+          # Copy compressed kernels and kernel configs from all arch builds
+          find all-artifacts -type f \( -name "*.xz" -o -name "config-*" \) \
+            -exec cp {} release-artifacts/ \;
+
+          # Build combined SHA256SUMS from individual per-file .sha256 entries
+          find all-artifacts -type f -name "*.sha256" \
+            -exec cat {} \; | sort > release-artifacts/SHA256SUMS
+
+          echo "Release artifacts:"
+          ls -la release-artifacts/
+
+      - name: Sign release artifacts
+        run: ./build/anvil signing sign release-artifacts/
+
+      - name: Create release notes
+        env:
+          KERNEL_VERSION: ${{ needs.check-version.outputs.kernel_version }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          cat > release-notes.md << EOF
+          # Linux Kernel ${KERNEL_VERSION} - Firecracker Compatible
+
+          ## Overview
+
+          Pre-built Linux kernel ${KERNEL_VERSION} configured for AWS Firecracker microVMs.
+
+          ## Architectures
+
+          - **x86_64**: Intel/AMD 64-bit processors
+          - **aarch64**: ARM 64-bit processors (e.g., AWS Graviton)
+
+          ## Artifacts
+
+          - \`vmlinux-${KERNEL_VERSION}-x86_64.xz\` - Compressed kernel for x86_64
+          - \`Image-${KERNEL_VERSION}-aarch64.xz\` - Compressed kernel for aarch64
+          - \`config-${KERNEL_VERSION}-x86_64\` - Kernel configuration for x86_64
+          - \`config-${KERNEL_VERSION}-aarch64\` - Kernel configuration for aarch64
+          - \`SHA256SUMS\` - Checksums of release artifacts
+          - \`SHA256SUMS.asc\` - PGP signature of SHA256SUMS
+          - \`signing-key.asc\` - Public key used to sign this release
+
+          ## Usage
+
+          1. Download the appropriate kernel for your architecture
+          2. Verify PGP signature (see Verification section below)
+          3. Verify checksum: \`sha256sum -c SHA256SUMS --ignore-missing\`
+          4. Decompress: \`xz -d vmlinux-${KERNEL_VERSION}-x86_64.xz\`
+          5. Use with Firecracker
+
+          ## Kernel Configuration
+
+          Based on Firecracker's official microvm-kernel configurations with essential features:
+          - KVM guest support
+          - VirtIO drivers (block, network, console, balloon)
+          - Minimal footprint for fast boot times
+          - Security hardening (SECCOMP, SELinux, Spectre/Meltdown mitigations)
+
+          ## Build Information
+
+          - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **Upstream Release**: [kernel.org - Linux ${KERNEL_VERSION}](https://kernel.org)
+          - **Configuration Source**: [Firecracker Guest Configs](https://github.com/firecracker-microvm/firecracker/tree/main/resources/guest_configs)
+
+          ## Verification
+
+          ### PGP Signature Verification (Recommended)
+
+          Verify the PGP signature on SHA256SUMS to ensure kernels haven't been tampered with.
+
+          **Note:** Each release includes the exact public key that signed it. This ensures old releases remain verifiable even after key rotation.
+
+          \`\`\`bash
+          # Download and import the public key from this release
+          wget https://github.com/${GITHUB_REPO}/releases/download/v${KERNEL_VERSION}/signing-key.asc
+          gpg --import signing-key.asc
+
+          # Download checksums and signature
+          wget https://github.com/${GITHUB_REPO}/releases/download/v${KERNEL_VERSION}/SHA256SUMS
+          wget https://github.com/${GITHUB_REPO}/releases/download/v${KERNEL_VERSION}/SHA256SUMS.asc
+
+          # Verify PGP signature
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+
+          # If signature is good, verify kernel checksums
+          wget https://github.com/${GITHUB_REPO}/releases/download/v${KERNEL_VERSION}/vmlinux-${KERNEL_VERSION}-x86_64.xz
+          sha256sum -c SHA256SUMS --ignore-missing
+          \`\`\`
+
+          ### Quick Verification (Checksums Only)
+
+          If you trust GitHub's infrastructure and don't need PGP verification:
+
+          \`\`\`bash
+          # Download kernel and checksums
+          wget https://github.com/${GITHUB_REPO}/releases/download/v${KERNEL_VERSION}/vmlinux-${KERNEL_VERSION}-x86_64.xz
+          wget https://github.com/${GITHUB_REPO}/releases/download/v${KERNEL_VERSION}/SHA256SUMS
+
+          # Verify
+          sha256sum -c SHA256SUMS --ignore-missing
+          \`\`\`
+
+          See the [main README](https://github.com/${GITHUB_REPO}#verifying-releases) for complete verification instructions including key fingerprint.
+
+          ---
+
+          Built automatically by [anvil](https://github.com/${GITHUB_REPO})
+          EOF
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KERNEL_VERSION: ${{ needs.check-version.outputs.kernel_version }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          TAG="v${KERNEL_VERSION}"
+
+          gh release create "$TAG" \
+            --title "Linux Kernel ${KERNEL_VERSION} - Firecracker Compatible" \
+            --notes-file release-notes.md \
+            --repo "$GITHUB_REPO" \
+            release-artifacts/*
+
+          echo "Release $TAG created successfully!"
+
+      - name: Close build request issues
+        if: success()
+        env:
+          KERNEL_VERSION: ${{ needs.check-version.outputs.kernel_version }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const version = process.env.KERNEL_VERSION;
+
+            // Search for open issues with build-in-progress label and matching version
+            const query = `repo:${context.repo.owner}/${context.repo.repo} is:open label:build-in-progress "${version}"`;
+
+            const issues = await github.rest.search.issuesAndPullRequests({
+              q: query
+            });
+
+            for (const issue of issues.data.items) {
+              // Add success comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `## ✅ Build Complete
+
+            Kernel version **${version}** has been successfully built and published!
+
+            **Download the release:** https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${version}
+
+            **What's included:**
+            - Pre-built kernels for x86_64 and aarch64
+            - Kernel configurations
+            - SHA256 checksums
+            - PGP signatures for verification
+
+            Thank you for your build request!`
+              });
+
+              // Close issue and update labels
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                labels: ['build-request', 'completed']
+              });
+
+              console.log(`Closed issue #${issue.number} for kernel ${version}`);
+            }

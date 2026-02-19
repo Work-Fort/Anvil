@@ -1,0 +1,117 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Check Signing Key Expiration
+
+on:
+  # Run daily at 9 AM UTC
+  schedule:
+    - cron: '0 9 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write  # For creating expiry warning issues
+
+jobs:
+  check-expiry:
+    name: Check Signing Key Expiration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install Task
+        uses: go-task/setup-task@v1
+
+      - name: Install libguestfs (required for CLI compilation)
+        run: sudo apt-get update && sudo apt-get install -y libguestfs-dev
+
+      - name: Build CLI
+        run: task build
+
+      - name: Import signing key
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          printf '%s' "$SIGNING_KEY" > /tmp/signing-key.asc
+          ./build/anvil signing import-key /tmp/signing-key.asc
+          rm -f /tmp/signing-key.asc
+
+      - name: Check key expiration
+        id: check
+        run: |
+          ./build/anvil signing check-expiry
+        continue-on-error: true
+
+      - name: Create GitHub issue if key expires soon
+        if: steps.check.outcome == 'failure'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = '⚠️ Signing Key Expiring Soon';
+            const body = `## Signing Key Expiration Warning
+
+            The release signing key is expiring within 60 days or has already expired.
+
+            ### Action Required
+
+            Rotate the signing key as soon as possible:
+
+            \`\`\`bash
+            task signing:rotate
+            \`\`\`
+
+            After rotation:
+            1. Update the README.md with the new key fingerprint
+            2. Commit the new public key
+            3. Update the GitHub Actions \`SIGNING_KEY\` secret
+
+            ### Details
+
+            - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - Triggered by: Daily expiry check
+            - Date: ${{ github.event.repository.updated_at }}
+
+            This issue was automatically created by the key expiry monitoring workflow.`;
+
+            // Check if an issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'signing-key-expiry'
+            });
+
+            if (issues.data.length === 0) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['signing-key-expiry', 'security']
+              });
+              console.log('Created new issue for key expiry warning');
+            } else {
+              // Comment on existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `⚠️ Key expiry warning still active as of ${new Date().toISOString()}\n\nWorkflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+              });
+              console.log('Updated existing issue with new comment');
+            }
+
+      - name: Fail workflow if key expires soon
+        if: steps.check.outcome == 'failure'
+        run: |
+          echo "::error::Signing key expires within 60 days or has expired"
+          exit 1

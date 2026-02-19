@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: Apache-2.0
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: '3'
+
+# libguestfs namespace - Vendor golang bindings
+#
+# This namespace is independent and can be easily extracted to other projects.
+# It provides utilities for vendoring official libguestfs golang bindings (LGPL-2.1+)
+# instead of using GPL-licensed community packages.
+
+tasks:
+  vendor:
+    desc: Vendor official libguestfs golang bindings (LGPL-2.1+)
+    silent: true
+    interactive: true
+    vars:
+      LIBGUESTFS_VERSION: '{{.LIBGUESTFS_VERSION | default "1.52.0"}}'
+      LIBGUESTFS_VENDOR_DIR: '{{.LIBGUESTFS_VENDOR_DIR | default "third_party/libguestfs.org/guestfs"}}'
+    summary: |
+      Extract and vendor official libguestfs golang bindings (LGPL-2.1+)
+
+      Extracts the generated bindings and vendors them into your project.
+      The script tries system packages first (Ubuntu/Debian golang-guestfs-dev),
+      then falls back to building from source if needed (Arch Linux).
+
+      Options:
+        LIBGUESTFS_VERSION=1.58.0             Version to vendor (default: 1.52.0)
+        LIBGUESTFS_VENDOR_DIR=path/to/vendor  Target directory (default: third_party/libguestfs.org/guestfs)
+
+      Examples:
+        task libguestfs:vendor                                        # Use default version (1.52.0)
+        task libguestfs:vendor LIBGUESTFS_VERSION=1.58.0              # Specific version
+        task libguestfs:vendor LIBGUESTFS_VENDOR_DIR=internal/guestfs # Default version, custom location
+
+      What this does:
+        1. Uses version 1.52.0 if not specified (can override with VERSION=x.y.z)
+        2. Checks if bindings already vendored (prompts to overwrite)
+        3. Tries system packages (fast path for Ubuntu/Debian)
+        4. Falls back to building from source (Arch Linux, others)
+        5. Verifies downloads with GPG signatures (when building from source)
+        6. Vendors generated .go files to target directory
+        7. Adds LICENSE and README to vendored directory
+
+      After running:
+        - Import in code: import "yourmodule/vendor/libguestfs.org/guestfs"
+        - Runtime requirement: libguestfs shared libraries must be installed
+        - Build requirement: libguestfs-dev headers must be installed
+
+      Platform Support:
+        - Ubuntu/Debian: Uses golang-guestfs-dev package (fast)
+        - Arch Linux: Builds from source (slower, requires build deps)
+        - Other distros: Builds from source
+
+      Dependencies for building from source:
+        - curl, tar, gcc, make, pkg-config, go
+    cmds:
+      - |
+        ./scripts/libguestfs/vendor-bindings.sh --output "{{.LIBGUESTFS_VENDOR_DIR}}" --version "{{.LIBGUESTFS_VERSION}}"
+
+  clean:
+    desc: Remove vendored libguestfs bindings
+    silent: true
+    vars:
+      LIBGUESTFS_VENDOR_DIR: '{{.LIBGUESTFS_VENDOR_DIR | default "third_party/libguestfs.org/guestfs"}}'
+    summary: |
+      Remove vendored libguestfs golang bindings
+
+      Options:
+        LIBGUESTFS_VENDOR_DIR=path/to/vendor  Target directory (default: third_party/libguestfs.org/guestfs)
+
+      Examples:
+        task libguestfs:clean                                           # Remove default location
+        task libguestfs:clean LIBGUESTFS_VENDOR_DIR=internal/guestfs    # Remove custom location
+
+      This removes the entire vendored directory. To re-vendor, run:
+        task libguestfs:vendor
+    cmds:
+      - |
+        if [ -d "{{.LIBGUESTFS_VENDOR_DIR}}" ]; then
+          echo "Removing vendored bindings at {{.LIBGUESTFS_VENDOR_DIR}}..."
+          rm -rf "{{.LIBGUESTFS_VENDOR_DIR}}"
+          echo "✓ Vendored bindings removed"
+        else
+          echo "No vendored bindings found at {{.LIBGUESTFS_VENDOR_DIR}}"
+        fi
+
+  help:
+    desc: Show libguestfs namespace help
+    silent: true
+    cmds:
+      - |
+        cat <<'EOF'
+        libguestfs namespace - Vendor golang bindings
+
+        This namespace provides utilities for vendoring official libguestfs
+        golang bindings (LGPL-2.1+) into your project, avoiding GPL-licensed
+        community packages.
+
+        Available tasks:
+          vendor  - Vendor libguestfs golang bindings
+          clean   - Remove vendored bindings
+          help    - Show this help
+
+        Quick start:
+          task libguestfs:vendor
+
+        For detailed help on a specific task:
+          task --summary libguestfs:vendor
+          task --summary libguestfs:clean
+
+        This namespace is independent and can be easily extracted to other
+        projects. Simply copy:
+          - scripts/libguestfs/
+          - tasks/libguestfs/
+
+        And add to your root Taskfile.dist.yaml:
+          includes:
+            libguestfs:
+              taskfile: tasks/libguestfs
+              dir: .
+        EOF

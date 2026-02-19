@@ -1,0 +1,7 @@
+sphinx
+sphinx-rtd-theme
+sphinx-autobuild
+sphinx-tabs
+sphinx-copybutton
+sphinx-togglebutton
+sphinxcontrib-jquery

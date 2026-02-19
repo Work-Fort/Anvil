@@ -1,0 +1,404 @@
+# SPDX-License-Identifier: Apache-2.0
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: '3'
+
+# go namespace - CLI build, test, and development tasks
+
+vars:
+  BINARY_NAME: anvil
+  BUILD_DIR: build
+  GIT_SHORT_SHA:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  VERSION: '{{.VERSION | default (printf "dev-%s" .GIT_SHORT_SHA)}}'
+  DISABLE_UPDATE: '{{.DISABLE_UPDATE | default "false"}}'
+  DETECTED_ARCH:
+    sh: uname -m
+  DETECTED_GOARCH:
+    sh: |
+      case "{{.DETECTED_ARCH}}" in
+        x86_64) echo "amd64" ;;
+        aarch64|arm64) echo "arm64" ;;
+        *) echo "{{.DETECTED_ARCH}}" ;;
+      esac
+  GOARCH: '{{.GOARCH | default .DETECTED_GOARCH}}'
+
+tasks:
+  build:
+    desc: Build anvil CLI
+    silent: true
+    summary: |
+      Build the anvil CLI binary for the current platform
+
+      Output: build/anvil
+
+      Automatically builds vsock-server-standalone first and embeds it.
+
+      Options:
+        VERSION=x.y.z       Set version at build time (default: dev-<git-sha>)
+        DISABLE_UPDATE=true Disable self-update (for package managers)
+
+      Examples:
+        task go:build
+        task go:build VERSION=1.2.3
+        task go:build VERSION=1.2.3 DISABLE_UPDATE=true
+    deps:
+      - build:vsock-server
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - "{{.BUILD_DIR}}/vsock-server-standalone"
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - echo "Copying vsock-server-standalone for embedding..."
+      - cp {{.BUILD_DIR}}/vsock-server-standalone pkg/firecracker/embedded/vsock-server-standalone
+      - echo "Building anvil CLI with embedded vsock-server..."
+      - go build -mod=mod -ldflags "-X github.com/Work-Fort/Anvil/cmd.Version={{.VERSION}} -X github.com/Work-Fort/Anvil/cmd.DisableUpdate={{.DISABLE_UPDATE}}" -o {{.BUILD_DIR}}/{{.BINARY_NAME}}
+      - echo "✓ Built {{.BUILD_DIR}}/{{.BINARY_NAME}}"
+
+  build:vsock-server:
+    desc: Build static vsock server for VM rootfs
+    silent: true
+    summary: |
+      Build the vsock-server-standalone binary as a static executable
+
+      This binary runs inside Firecracker VMs and must be statically linked
+      to work in the minimal Alpine Linux rootfs (no glibc, no dynamic libraries).
+
+      Output: build/vsock-server-standalone
+
+      Built with CGO_ENABLED=0 for true static linking.
+
+      Examples:
+        task go:build:vsock-server
+    sources:
+      - "cmd/vsock-server-standalone/**/*.go"
+      - "pkg/vsock/**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BUILD_DIR}}/vsock-server-standalone"
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - echo "Building static vsock server..."
+      - CGO_ENABLED=0 go build -mod=mod -ldflags "-w -s" -trimpath -o {{.BUILD_DIR}}/vsock-server-standalone ./cmd/vsock-server-standalone
+      - echo "✓ Built {{.BUILD_DIR}}/vsock-server-standalone"
+      - |
+        echo "Verifying binary is static..."
+        if ldd {{.BUILD_DIR}}/vsock-server-standalone 2>&1 | grep -q "not a dynamic executable"; then
+          echo "✓ Binary is statically linked"
+        else
+          echo "Error: Binary is not static!" && exit 1
+        fi
+
+  build:release:
+    desc: Build optimized release binary for specific architecture
+    silent: true
+    summary: |
+      Build an optimized release binary with CGO support for libguestfs
+
+      This is the production build used for GitHub releases.
+      Builds with CGO_ENABLED=1 (required for libguestfs) and strips debug info.
+      Embeds the architecture-specific vsock-server binary.
+
+      Output: build/anvil-linux-{{.GOARCH}}
+
+      Options:
+        VERSION=x.y.z       Set version at build time (required for releases)
+        GOARCH=arch         Target architecture (amd64 or arm64)
+        DISABLE_UPDATE=true Disable self-update (for package managers)
+
+      Examples:
+        task go:build:release VERSION=1.2.3 GOARCH=amd64
+        task go:build:release VERSION=1.2.3 GOARCH=arm64
+
+      Package manager build (disables self-update):
+        task go:build:release VERSION=1.2.3 GOARCH=amd64 DISABLE_UPDATE=true
+    deps:
+      - task: build:vsock-server:release
+        vars:
+          GOARCH: "{{.GOARCH}}"
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - echo "Copying vsock-server-standalone-linux-{{.GOARCH}} for embedding..."
+      - cp {{.BUILD_DIR}}/vsock-server-standalone-linux-{{.GOARCH}} pkg/firecracker/embedded/vsock-server-standalone
+      - |
+        echo "Building release binary for {{.GOARCH}}..."
+        CGO_ENABLED=1 GOOS=linux GOARCH={{.GOARCH}} go build -mod=mod \
+          -ldflags "-X github.com/Work-Fort/Anvil/cmd.Version={{.VERSION}} -X github.com/Work-Fort/Anvil/cmd.DisableUpdate={{.DISABLE_UPDATE}} -w -s" \
+          -trimpath \
+          -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-linux-{{.GOARCH}}
+        echo "✓ Built {{.BUILD_DIR}}/{{.BINARY_NAME}}-linux-{{.GOARCH}}"
+
+  build:vsock-server:release:
+    desc: Build optimized static vsock server for specific architecture
+    silent: true
+    summary: |
+      Build an optimized static vsock server binary for releases
+
+      This binary must be statically linked to run in minimal Alpine rootfs.
+      Built with CGO_ENABLED=0 and optimized for size.
+
+      Output: build/vsock-server-standalone-linux-{{.GOARCH}}
+
+      Options:
+        GOARCH=arch  Target architecture (amd64 or arm64)
+
+      Examples:
+        task go:build:vsock-server:release GOARCH=amd64
+        task go:build:vsock-server:release GOARCH=arm64
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - |
+        echo "Building static vsock server for {{.GOARCH}}..."
+        CGO_ENABLED=0 GOOS=linux GOARCH={{.GOARCH}} go build -mod=mod \
+          -ldflags "-w -s" \
+          -trimpath \
+          -o {{.BUILD_DIR}}/vsock-server-standalone-linux-{{.GOARCH}} \
+          ./cmd/vsock-server-standalone
+        echo "✓ Built {{.BUILD_DIR}}/vsock-server-standalone-linux-{{.GOARCH}}"
+        echo "Verifying binary is static..."
+        if file {{.BUILD_DIR}}/vsock-server-standalone-linux-{{.GOARCH}} | grep -q "statically linked"; then
+          echo "✓ Binary is statically linked"
+        else
+          echo "Warning: Binary may not be fully static"
+        fi
+
+  build:all:
+    desc: Build for all supported platforms
+    silent: true
+    summary: |
+      Build release binaries for all supported Linux architectures
+
+      Creates:
+        - build/anvil-linux-amd64 (x86_64, with embedded vsock-server)
+        - build/anvil-linux-arm64 (aarch64, with embedded vsock-server)
+        - build/vsock-server-standalone-linux-amd64 (x86_64)
+        - build/vsock-server-standalone-linux-arm64 (aarch64)
+
+      Each anvil binary embeds the correct architecture-specific
+      vsock-server binary automatically during the build process.
+
+      Options:
+        VERSION=x.y.z  Set version at build time (default: dev-<git-sha>)
+
+      Examples:
+        task go:build:all
+        task go:build:all VERSION=1.2.3
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - task: build:release
+        vars:
+          GOARCH: amd64
+      - task: build:release
+        vars:
+          GOARCH: arm64
+
+  test:
+    desc: Run tests
+    silent: true
+    summary: |
+      Run all tests with coverage
+
+      Examples:
+        task go:test
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - echo "Running tests..."
+      - go test -v -race -coverprofile={{.BUILD_DIR}}/coverage.out ./...
+      - echo "✓ Tests passed"
+
+  fmt:
+    desc: Format Go code with gofmt
+    silent: true
+    summary: |
+      Format all Go source files using gofmt
+
+      Examples:
+        task go:fmt
+    cmds:
+      - echo "Formatting Go code..."
+      - find . -name "*.go" -not -path "./vendor/*" -not -path "./third_party/*" -exec gofmt -w {} +
+      - echo "✓ Code formatted"
+
+  lint:
+    desc: Run linters
+    silent: true
+    summary: |
+      Run Go linters and formatters
+
+      Examples:
+        task go:lint
+    cmds:
+      - echo "Running go fmt..."
+      - test -z "$(find . -name "*.go" -not -path "./vendor/*" -not -path "./third_party/*" -exec gofmt -l {} +)" || (find . -name "*.go" -not -path "./vendor/*" -not -path "./third_party/*" -exec gofmt -l {} + && exit 1)
+      - echo "Running go vet..."
+      - go vet -mod=mod ./...
+      - echo "✓ Linting passed"
+
+  lint:unused:
+    desc: Find unused code with staticcheck
+    silent: true
+    summary: |
+      Run staticcheck to find unused code, variables, functions, and imports
+
+      This detects:
+        - Unused functions
+        - Unused variables/constants
+        - Unused struct fields
+        - Unreachable code
+
+      Note: Requires staticcheck to be installed.
+      Install with: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      Examples:
+        task go:lint:unused
+    env:
+      PATH:
+        sh: echo "$PATH:$(go env GOPATH)/bin"
+    cmds:
+      - |
+        if ! command -v staticcheck &> /dev/null; then
+          echo "staticcheck not found. Installing..."
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+        fi
+      - echo "Running staticcheck to find unused code..."
+      - staticcheck ./...
+      - echo "✓ No unused code found"
+
+  clean:
+    desc: Clean CLI build artifacts
+    silent: true
+    summary: |
+      Remove compiled binaries and test artifacts
+
+      Examples:
+        task go:clean
+    cmds:
+      - echo "Cleaning CLI build artifacts..."
+      - rm -rf {{.BUILD_DIR}}
+      - echo "✓ CLI artifacts cleaned"
+
+  install:
+    desc: Install to system
+    silent: true
+    summary: |
+      Build and install anvil to ~/.local/share/anvil/bin
+
+      The binary will be installed to:
+        $XDG_DATA_HOME/anvil/bin/anvil
+        (default: ~/.local/share/anvil/bin/anvil)
+
+      Add to PATH:
+        export PATH="$PATH:$HOME/.local/share/anvil/bin"
+
+      Examples:
+        task go:install
+    deps:
+      - build
+    cmds:
+      - |
+        XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+        INSTALL_DIR="$XDG_DATA_HOME/anvil/bin"
+        mkdir -p "$INSTALL_DIR"
+        cp {{.BUILD_DIR}}/{{.BINARY_NAME}} "$INSTALL_DIR/{{.BINARY_NAME}}"
+        chmod +x "$INSTALL_DIR/{{.BINARY_NAME}}"
+        echo "✓ Installed to $INSTALL_DIR/{{.BINARY_NAME}}"
+        echo ""
+        if echo "$PATH" | grep -q "$INSTALL_DIR"; then
+          echo "✓ $INSTALL_DIR is on your PATH"
+        else
+          echo "Add to your PATH:"
+          echo "  export PATH=\"\$PATH:$INSTALL_DIR\""
+        fi
+
+  dev:
+    desc: Build and run locally
+    silent: true
+    summary: |
+      Build and run anvil with arguments
+
+      Examples:
+        task go:dev -- version
+        task go:dev -- list kernel
+        task go:dev -- versions firecracker
+    deps:
+      - build
+    cmds:
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} {{.CLI_ARGS}}
+
+  version:
+    desc: Show CLI version
+    silent: true
+    summary: |
+      Display the current CLI version
+
+      The version is set at build time via ldflags. You can override it:
+        task go:build VERSION=1.2.3
+
+      Default version: dev-<git-sha>
+
+      Examples:
+        task go:version
+        task go:version VERSION=1.0.0
+    cmds:
+      - echo "{{.VERSION}}"
+
+  mod:tidy:
+    desc: Tidy Go modules
+    silent: true
+    summary: |
+      Run go mod tidy to clean up dependencies
+
+      Examples:
+        task go:mod:tidy
+    cmds:
+      - echo "Tidying Go modules..."
+      - go mod tidy
+      - echo "✓ Modules tidied"
+
+  mod:download:
+    desc: Download Go modules
+    silent: true
+    summary: |
+      Download all Go module dependencies
+
+      Examples:
+        task go:mod:download
+    cmds:
+      - echo "Downloading Go modules..."
+      - go mod download
+      - echo "✓ Modules downloaded"
+
+  check:
+    desc: Run all checks (lint + test)
+    silent: true
+    summary: |
+      Run all quality checks: formatting, linting, and tests
+
+      Examples:
+        task go:check
+    cmds:
+      - task: lint
+      - task: test
+
+  ci:
+    desc: Run all CI checks (format, lint, staticcheck, test)
+    silent: true
+    summary: |
+      Run comprehensive CI checks with strict failure on any issue:
+        - go fmt (formatting)
+        - go vet (common mistakes)
+        - staticcheck (unused code, deprecated APIs, bugs)
+        - go test with race detection
+
+      Fails immediately if any check fails.
+
+      Examples:
+        task go:ci
+    cmds:
+      - task: lint
+      - task: lint:unused
+      - task: test

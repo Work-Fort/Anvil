@@ -1,0 +1,3 @@
+# Ignore embedded vsock-server binary (copied during build)
+vsock-server-standalone
+vsock-server-standalone-*
