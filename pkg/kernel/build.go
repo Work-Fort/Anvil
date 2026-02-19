@@ -1030,6 +1030,20 @@ func buildKernelImage(logger *buildLogger, opts BuildOptions, kernelSrcDir, kern
 		}
 	}
 
+	if opts.Arch == "aarch64" {
+		logger.Info("Running make prepare to generate ARM64 headers...")
+		prepCmd := exec.Command("make", "prepare", "ARCH=arm64", "CROSS_COMPILE=aarch64-linux-gnu-")
+		prepCmd.Dir = kernelSrcDir
+		prepCmd.Stdout = logger.writer
+		prepCmd.Stderr = logger.writer
+		if err := runCommandWithProcessGroup(ctx, prepCmd); err != nil {
+			if ctx != nil && ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return fmt.Errorf("kernel prepare failed: %w", err)
+		}
+	}
+
 	var cmd *exec.Cmd
 	numCPU := runtime.NumCPU()
 
