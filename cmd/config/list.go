@@ -20,7 +20,7 @@ and where they come from (ENV, local config, user config, or default).
 
 Output format: key = value (source)`,
 		Example: `  # List all configuration
-  crbl config list
+  anvil config list
 
   # Example output:
   # build-jobs = 8 (from ./anvil.yaml)

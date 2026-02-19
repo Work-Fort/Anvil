@@ -21,17 +21,17 @@ Keys use dot notation for nested values (e.g., firecracker.version).
   - Environment variables and defaults will still apply after removal`,
 		Args: cobra.ExactArgs(1),
 		Example: `  # Remove from local config
-  crbl config unset use-tui
-  crbl config unset build-jobs
+  anvil config unset use-tui
+  anvil config unset build-jobs
 
   # Remove from user config
-  crbl config unset --global github-token
+  anvil config unset --global github-token
 
   # Remove nested value
-  crbl config unset firecracker.version
+  anvil config unset firecracker.version
 
   # Remove parent (removes all children)
-  crbl config unset firecracker`,
+  anvil config unset firecracker`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 

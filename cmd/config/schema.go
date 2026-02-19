@@ -25,13 +25,13 @@ The schema can be used for:
 
 By default, the schema includes all keys. Use --scope to filter by user or repo keys.`,
 		Example: `  # Print full schema to stdout
-  crbl config schema
+  anvil config schema
 
   # Generate user-scope schema (for ~/.config/anvil/config.yaml)
-  crbl config schema --scope user --output user.schema.json
+  anvil config schema --scope user --output user.schema.json
 
   # Generate repo-scope schema (for ./anvil.yaml)
-  crbl config schema --scope repo --output repo.schema.json
+  anvil config schema --scope repo --output repo.schema.json
 
   # Use with VS Code (in .vscode/settings.json):
   {

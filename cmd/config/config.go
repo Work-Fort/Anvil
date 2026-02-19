@@ -26,22 +26,22 @@ Configuration precedence (highest to lowest):
 By default, config commands operate on local config (./anvil.yaml).
 Use --global to operate on user config instead.`,
 		Example: `  # Set local config (project-specific)
-  crbl config set use-tui false
-  crbl config set build-jobs 8
+  anvil config set use-tui false
+  anvil config set build-jobs 8
 
   # Set global config (user preferences)
-  crbl config set --global github-token ghp_xxxxx
-  crbl config set --global default-arch x86_64
+  anvil config set --global github-token ghp_xxxxx
+  anvil config set --global default-arch x86_64
 
   # Get configuration value
-  crbl config get use-tui
+  anvil config get use-tui
 
   # Remove configuration value
-  crbl config unset build-jobs
-  crbl config unset --global github-token
+  anvil config unset build-jobs
+  anvil config unset --global github-token
 
   # List all configuration
-  crbl config list`,
+  anvil config list`,
 	}
 
 	// Add subcommands

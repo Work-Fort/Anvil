@@ -23,22 +23,22 @@ Boolean values support natural language:
 Numeric values are automatically detected and typed.`,
 		Args: cobra.ExactArgs(2),
 		Example: `  # Set boolean values (multiple formats supported)
-  crbl config set use-tui true
-  crbl config set use-tui enable
-  crbl config set use-tui yes
+  anvil config set use-tui true
+  anvil config set use-tui enable
+  anvil config set use-tui yes
 
   # Set string values
-  crbl config set log-level debug
-  crbl config set default-arch x86_64
+  anvil config set log-level debug
+  anvil config set default-arch x86_64
 
   # Set numeric values
-  crbl config set build-jobs 8
+  anvil config set build-jobs 8
 
   # Set nested values with dot notation
-  crbl config set firecracker.version v1.5.0
+  anvil config set firecracker.version v1.5.0
 
   # Set in user config instead of local
-  crbl config set --global github-token ghp_xxxxx`,
+  anvil config set --global github-token ghp_xxxxx`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key, value := args[0], args[1]
 

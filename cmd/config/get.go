@@ -21,10 +21,10 @@ The source indicates where the value comes from in precedence order:
   - Default: Built-in default value`,
 		Args: cobra.ExactArgs(1),
 		Example: `  # Get a configuration value
-  crbl config get use-tui
+  anvil config get use-tui
 
   # Get nested value
-  crbl config get firecracker.version
+  anvil config get firecracker.version
 
   # Output shows value and source:
   # use-tui = true (from ENV: ANVIL_USE_TUI)
