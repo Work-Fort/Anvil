@@ -194,7 +194,7 @@ func runBuild(opts BuildOptions, logger *buildLogger, progressCallback func(floa
 	if version == "" {
 		logger.Info("Fetching latest stable kernel version from kernel.org...")
 		var err error
-		version, err = getLatestKernelVersion()
+		version, err = GetLatestKernelVersion()
 		if err != nil {
 			return fmt.Errorf("failed to fetch latest kernel version: %w", err)
 		}
@@ -665,8 +665,8 @@ func updateArchiveIndex(archiveDir, arch, version, kernelPath string) error {
 	return os.WriteFile(indexPath, data, 0644)
 }
 
-// getLatestKernelVersion fetches the latest stable kernel version from kernel.org
-func getLatestKernelVersion() (string, error) {
+// GetLatestKernelVersion fetches the latest stable kernel version from kernel.org
+func GetLatestKernelVersion() (string, error) {
 	resp, err := http.Get("https://www.kernel.org/releases.json")
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch kernel.org API: %w", err)
