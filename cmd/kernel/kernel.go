@@ -28,6 +28,7 @@ func NewKernelCmd() *cobra.Command {
 	cmd.AddCommand(newVersionsCmd())
 	cmd.AddCommand(newSetCmd())
 	cmd.AddCommand(newRemoveCmd())
+	cmd.AddCommand(newVersionCheckCmd())
 
 	return cmd
 }
