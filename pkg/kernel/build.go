@@ -968,7 +968,7 @@ func applyKernelConfig(logger *buildLogger, opts BuildOptions, kernelSrcDir stri
 
 	var cmd *exec.Cmd
 	if opts.Arch == "aarch64" {
-		cmd = exec.Command("make", "olddefconfig", "ARCH=arm64", "CROSS_COMPILE=aarch64-linux-gnu-")
+		cmd = exec.Command("make", "olddefconfig", "ARCH=arm64")
 	} else {
 		cmd = exec.Command("make", "olddefconfig")
 	}
@@ -1030,13 +1030,27 @@ func buildKernelImage(logger *buildLogger, opts BuildOptions, kernelSrcDir, kern
 		}
 	}
 
+	// ARM64 kernels >= 6.11 need make prepare to generate syscall headers (unistd_64.h)
+	if opts.Arch == "aarch64" {
+		prepCmd := exec.Command("make", "prepare", "ARCH=arm64")
+		prepCmd.Dir = kernelSrcDir
+		prepCmd.Stdout = logger.writer
+		prepCmd.Stderr = logger.writer
+		if err := runCommandWithProcessGroup(ctx, prepCmd); err != nil {
+			if ctx != nil && ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return fmt.Errorf("kernel prepare failed: %w", err)
+		}
+	}
+
 	var cmd *exec.Cmd
 	numCPU := runtime.NumCPU()
 
 	if opts.Arch == "x86_64" {
 		cmd = exec.Command("make", fmt.Sprintf("-j%d", numCPU), "vmlinux")
 	} else {
-		cmd = exec.Command("make", fmt.Sprintf("-j%d", numCPU), "Image", "ARCH=arm64", "CROSS_COMPILE=aarch64-linux-gnu-")
+		cmd = exec.Command("make", fmt.Sprintf("-j%d", numCPU), "Image", "ARCH=arm64")
 	}
 	cmd.Dir = kernelSrcDir
 	// Route output through logger's writer (pipes to TUI properly)
