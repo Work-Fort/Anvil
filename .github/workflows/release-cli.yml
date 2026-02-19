@@ -140,17 +140,15 @@ jobs:
         env:
           ANVIL_SIGNING_PASSWORD: ${{ secrets.ANVIL_SIGNING_PASSWORD }}
         run: |
-          cd release-artifacts
-
           # Combine individual checksums into SHA256SUMS
-          cat *.sha256 > SHA256SUMS
-          rm *.sha256
+          cat release-artifacts/*.sha256 > release-artifacts/SHA256SUMS
+          rm release-artifacts/*.sha256
 
-          # Sign the checksums
-          ../build/anvil signing sign .
+          # Sign the checksums (run from repo root so anvil.yaml is found)
+          ./build/anvil signing sign release-artifacts/
 
           echo "Release artifacts:"
-          ls -lh
+          ls -lh release-artifacts/
 
       - name: Create release notes
         env:
@@ -232,9 +230,6 @@ jobs:
 
           🤖 Built automatically by [anvil](https://github.com/${REPO})
           EOF
-
-      - name: Copy public key to release artifacts
-        run: cp ~/.local/share/anvil/keys/signing-key.asc release-artifacts/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
