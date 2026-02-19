@@ -140,9 +140,13 @@ jobs:
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
-          echo "$SIGNING_KEY" | ./build/anvil signing import-key
+          printf '%s' "$SIGNING_KEY" > /tmp/signing-key.asc
+          ./build/anvil signing import-key /tmp/signing-key.asc
+          rm -f /tmp/signing-key.asc
 
       - name: Create signed checksums
+        env:
+          ANVIL_SIGNING_PASSWORD: ${{ secrets.ANVIL_SIGNING_PASSWORD }}
         run: |
           cd release-artifacts
 

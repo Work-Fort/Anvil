@@ -219,6 +219,8 @@ jobs:
           ls -la release-artifacts/
 
       - name: Sign release artifacts
+        env:
+          ANVIL_SIGNING_PASSWORD: ${{ secrets.ANVIL_SIGNING_PASSWORD }}
         run: ./build/anvil signing sign release-artifacts/
 
       - name: Create release notes
