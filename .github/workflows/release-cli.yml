@@ -127,7 +127,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libguestfs-dev
 
       - name: Build CLI
-        run: task build
+        run: task go:build
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -253,8 +253,8 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release-artifacts/anvil-linux-amd64
-            release-artifacts/anvil-linux-arm64
+            release-artifacts/anvil-linux-amd64.xz
+            release-artifacts/anvil-linux-arm64.xz
             release-artifacts/SHA256SUMS
             release-artifacts/SHA256SUMS.asc
             release-artifacts/signing-key.asc

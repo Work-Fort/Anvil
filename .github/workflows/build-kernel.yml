@@ -145,7 +145,7 @@ jobs:
           key: kernel-source-${{ needs.check-version.outputs.kernel_version }}
 
       - name: Build CLI
-        run: task build
+        run: task go:build
 
       - name: Build kernel
         env:
@@ -186,7 +186,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libguestfs-dev
 
       - name: Build CLI
-        run: task build
+        run: task go:build
 
       - name: Import signing key
         env:
