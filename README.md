@@ -7,7 +7,7 @@ Automated builder for Firecracker-compatible Linux kernels. Checks for new stabl
 ## Features
 
 - **Automated Builds Every 4 Hours** - Latest stable kernel from kernel.org
-- **Multi-Architecture** - x86_64 and ARM64 (aarch64) support
+- **Multi-Architecture** - x86_64 and ARM64 (aarch64) support (ARM64 is experimental and untested)
 - **Firecracker-Optimized** - Minimal, fast-booting kernel configurations
 - **Cryptographically Verified** - PGP + SHA256 verification of all sources
 - **GitHub Releases** - Pre-built kernels with checksums and signatures
