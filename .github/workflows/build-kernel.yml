@@ -188,15 +188,6 @@ jobs:
       - name: Build CLI
         run: task go:build
 
-      - name: Import signing key
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: |
-          printf '%s' "$SIGNING_KEY" > /tmp/signing-key.asc
-          rm -f keys/signing-key.asc keys/signing-key-private.asc
-          ./build/anvil signing import-key /tmp/signing-key.asc
-          rm -f /tmp/signing-key.asc
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:

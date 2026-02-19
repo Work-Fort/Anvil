@@ -136,15 +136,6 @@ jobs:
           pattern: cli-*-${{ needs.tag.outputs.new_tag }}
           merge-multiple: true
 
-      - name: Import signing key
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: |
-          printf '%s' "$SIGNING_KEY" > /tmp/signing-key.asc
-          rm -f keys/signing-key.asc keys/signing-key-private.asc
-          ./build/anvil signing import-key /tmp/signing-key.asc
-          rm -f /tmp/signing-key.asc
-
       - name: Create signed checksums
         env:
           ANVIL_SIGNING_PASSWORD: ${{ secrets.ANVIL_SIGNING_PASSWORD }}
