@@ -34,15 +34,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libguestfs-dev
 
       - name: Build CLI
-        run: task build
-
-      - name: Import signing key
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: |
-          printf '%s' "$SIGNING_KEY" > /tmp/signing-key.asc
-          ./build/anvil signing import-key /tmp/signing-key.asc
-          rm -f /tmp/signing-key.asc
+        run: task go:build
 
       - name: Check key expiration
         id: check
