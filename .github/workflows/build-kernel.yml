@@ -106,13 +106,17 @@ jobs:
 
   build:
     name: Build Kernel (${{ matrix.arch }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: check-version
     if: needs.check-version.outputs.should_build == 'true'
 
     strategy:
       matrix:
-        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
       fail-fast: false
 
     steps:
@@ -129,14 +133,6 @@ jobs:
 
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y libguestfs-dev libelf-dev flex bison bc
-
-      - name: Install cross-compilation tools
-        env:
-          ARCH: ${{ matrix.arch }}
-        run: |
-          if [ "$ARCH" = "aarch64" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
-          fi
 
       - name: Cache kernel source
         uses: actions/cache@v4
