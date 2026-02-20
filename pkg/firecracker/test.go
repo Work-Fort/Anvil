@@ -330,7 +330,10 @@ func getFirecrackerBinary() (string, error) {
 		return "", fmt.Errorf("no default Firecracker version set: %w", err)
 	}
 
-	version := filepath.Base(target)
+	// Extract version from symlink target path
+	// Path format: .../firecracker/1.14.1/firecracker
+	// Get parent directory name which is the version
+	version := filepath.Base(filepath.Dir(target))
 	binaryPath := filepath.Join(config.GlobalPaths.DataDir, "firecracker", version, "firecracker")
 
 	if _, err := os.Stat(binaryPath); err != nil {
