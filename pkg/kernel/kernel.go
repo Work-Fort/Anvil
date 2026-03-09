@@ -331,23 +331,23 @@ func List(paths *config.Paths) ([]KernelInfo, string, error) {
 }
 
 // Set sets a kernel version as default by creating a symlink
-func Set(version string) error {
+func Set(version string, paths *config.Paths) error {
 	arch, err := config.GetArch()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get architecture: %w", err)
 	}
 
 	kernelName, err := config.GetKernelName()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get kernel name: %w", err)
 	}
 
-	sourceFile := filepath.Join(config.GlobalPaths.KernelsDir, version, fmt.Sprintf("%s-%s-%s", kernelName, version, arch))
-	symlinkPath := filepath.Join(config.GlobalPaths.DataDir, kernelName)
+	sourceFile := filepath.Join(paths.KernelsDir, version, fmt.Sprintf("%s-%s-%s", kernelName, version, arch))
+	symlinkPath := filepath.Join(paths.DataDir, kernelName)
 
 	// Check if version exists
 	if _, err := os.Stat(sourceFile); err != nil {
-		return fmt.Errorf("kernel %s not found. Download it first with: anvil download kernel %s", version, version)
+		return fmt.Errorf("kernel %s not found for %s", version, arch)
 	}
 
 	log.Debugf("Setting kernel %s as default", version)
@@ -357,12 +357,8 @@ func Set(version string) error {
 
 	// Create symlink
 	if err := os.Symlink(sourceFile, symlinkPath); err != nil {
-		return fmt.Errorf("failed to create symlink: %w", err)
+		return fmt.Errorf("failed to set default: %w", err)
 	}
-
-	fmt.Printf("✓ Kernel %s set as default\n\n", version)
-	fmt.Printf("Symlink created: %s -> %s\n", symlinkPath, sourceFile)
-	fmt.Println("Use with Firecracker config: \"kernel_image_path\":", symlinkPath)
 
 	return nil
 }

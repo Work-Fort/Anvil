@@ -2,7 +2,10 @@
 package kernel
 
 import (
+	"fmt"
+
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
+	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/kernel"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +24,12 @@ func newSetCmd() *cobra.Command {
 			if len(args) == 0 {
 				return cmd.Usage()
 			}
-			return kernel.Set(args[0])
+			version := args[0]
+			if err := kernel.Set(version, config.GlobalPaths); err != nil {
+				return err
+			}
+			fmt.Printf("Kernel %s set as default\n", version)
+			return nil
 		},
 	}
 }

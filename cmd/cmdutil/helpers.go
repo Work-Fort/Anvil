@@ -237,7 +237,7 @@ func ShowVersionSelector(target string) error {
 	setDefaultFn := func(version string) error {
 		switch target {
 		case "kernel":
-			return kernel.Set(version)
+			return kernel.Set(version, config.GlobalPaths)
 		case "firecracker":
 			return firecracker.Set(version)
 		default:

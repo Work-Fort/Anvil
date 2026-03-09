@@ -108,7 +108,7 @@ func handleKernelSetDefault(_ context.Context, req gomcp.CallToolRequest) (*gomc
 		return errResult(err)
 	}
 
-	if err := kernel.Set(version); err != nil {
+	if err := kernel.Set(version, config.GlobalPaths); err != nil {
 		return errResult(err)
 	}
 
