@@ -54,8 +54,8 @@ func handleArchiveKernel(_ context.Context, req gomcp.CallToolRequest) (*gomcp.C
 	}
 
 	// Read build stats to get artifact paths
-	buildDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "build")
-	statsFile := filepath.Join(buildDir, "build-stats.json")
+	artifactsDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "artifacts")
+	statsFile := filepath.Join(artifactsDir, "build-stats.json")
 	stats, err := kernel.ReadBuildStats(statsFile)
 	if err != nil {
 		return errResult(fmt.Errorf("no build stats found — build kernel %s for %s first: %w", version, arch, err))

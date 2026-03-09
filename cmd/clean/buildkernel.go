@@ -7,8 +7,8 @@ import (
 
 func newBuildKernelCmd(cleanArch *string) *cobra.Command {
 	return &cobra.Command{
-		Use:     "build-kernel",
-		Aliases: []string{"builds", "build"},
+		Use:     "build",
+		Aliases: []string{"builds", "build-kernel"},
 		Short:   "Clean kernel source and build artifacts",
 		Long:    `Clean kernel source code and build artifacts created during kernel compilation.`,
 		RunE: func(cmd *cobra.Command, args []string) error {

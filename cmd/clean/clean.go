@@ -44,7 +44,7 @@ func NewCleanCmd() *cobra.Command {
 	firecrackerCmd.Flags().BoolVarP(&allDangerous, "all-dangerous", "a", false, "Remove all Firecracker data (requires confirmation)")
 	firecrackerCmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation prompt (use with --all-dangerous)")
 
-	// Add flags to build-kernel subcommand
+	// Add flags to build subcommand
 	buildKernelCmd.Flags().StringVarP(&cleanArch, "arch", "a", "all", "Architecture to clean: x86_64, aarch64, or all")
 
 	// Add subcommands to clean

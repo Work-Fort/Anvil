@@ -942,7 +942,7 @@ func applyKernelConfig(logger *buildLogger, opts BuildOptions, kernelSrcDir stri
 			return fmt.Errorf(
 				"kernel config file required (not in repo mode)\n\n" +
 					"Either:\n" +
-					"  1. Use --config flag: anvil build-kernel --config path/to/kernel.config\n" +
+					"  1. Use --config flag: anvil kernel build --config path/to/kernel.config\n" +
 					"  2. Create anvil.yaml in repo root with:\n" +
 					"     kernels:\n" +
 					"       config:\n" +

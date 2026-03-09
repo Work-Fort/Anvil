@@ -11,19 +11,19 @@ import (
 
 func registerConfigTools(s *server.MCPServer) {
 	s.AddTool(gomcp.NewTool("config_get",
-		gomcp.WithDescription("Get an anvil config value (from anvil.yaml or user config)"),
+		gomcp.WithDescription("Get an anvil config value (from anvil.yaml or user config). CLI: anvil config get"),
 		gomcp.WithString("key", gomcp.Required(), gomcp.Description("Config key (e.g. signing.key.name)")),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), handleConfigGet)
 
 	s.AddTool(gomcp.NewTool("config_set",
-		gomcp.WithDescription("Set an anvil config value"),
+		gomcp.WithDescription("Set an anvil config value. CLI: anvil config set"),
 		gomcp.WithString("key", gomcp.Required(), gomcp.Description("Config key")),
 		gomcp.WithString("value", gomcp.Required(), gomcp.Description("Value to set")),
 	), handleConfigSet)
 
 	s.AddTool(gomcp.NewTool("config_list",
-		gomcp.WithDescription("List all anvil config values with their sources"),
+		gomcp.WithDescription("List all anvil config values with their sources. CLI: anvil config list"),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), handleConfigList)
 

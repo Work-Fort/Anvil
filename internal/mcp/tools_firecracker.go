@@ -16,7 +16,7 @@ import (
 
 func registerFirecrackerTools(s *server.MCPServer) {
 	s.AddTool(gomcp.NewTool("firecracker_test",
-		gomcp.WithDescription("Run Firecracker acceptance test: boot VM and test vsock communication"),
+		gomcp.WithDescription("Run Firecracker acceptance test: boot VM and test vsock communication. CLI: anvil firecracker test"),
 		gomcp.WithString("kernel_version", gomcp.Description("Kernel version to test (default: default kernel)")),
 		gomcp.WithString("rootfs", gomcp.Description("Path to rootfs image")),
 		gomcp.WithNumber("boot_timeout_secs", gomcp.Description("Boot timeout in seconds (default: 10)")),
@@ -24,33 +24,33 @@ func registerFirecrackerTools(s *server.MCPServer) {
 	), handleFirecrackerTest)
 
 	s.AddTool(gomcp.NewTool("firecracker_list",
-		gomcp.WithDescription("List installed Firecracker versions"),
+		gomcp.WithDescription("List installed Firecracker versions. CLI: anvil firecracker list"),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), handleFirecrackerList)
 
 	s.AddTool(gomcp.NewTool("firecracker_get",
-		gomcp.WithDescription("Download a Firecracker binary version"),
+		gomcp.WithDescription("Download a Firecracker binary version. CLI: anvil firecracker get"),
 		gomcp.WithString("version", gomcp.Description("Version to download (default: latest)")),
 	), handleFirecrackerGet)
 
 	s.AddTool(gomcp.NewTool("firecracker_set_default",
-		gomcp.WithDescription("Set default Firecracker version"),
+		gomcp.WithDescription("Set default Firecracker version. CLI: anvil firecracker set"),
 		gomcp.WithString("version", gomcp.Required(), gomcp.Description("Version to set as default")),
 	), handleFirecrackerSetDefault)
 
 	s.AddTool(gomcp.NewTool("firecracker_remove",
-		gomcp.WithDescription("Remove an installed Firecracker version"),
+		gomcp.WithDescription("Remove an installed Firecracker version. CLI: anvil firecracker remove"),
 		gomcp.WithString("version", gomcp.Required(), gomcp.Description("Version to remove")),
 		gomcp.WithDestructiveHintAnnotation(true),
 	), handleFirecrackerRemove)
 
 	s.AddTool(gomcp.NewTool("firecracker_versions",
-		gomcp.WithDescription("List available Firecracker versions from GitHub"),
+		gomcp.WithDescription("List available Firecracker versions from GitHub. CLI: anvil firecracker versions"),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), handleFirecrackerVersions)
 
 	s.AddTool(gomcp.NewTool("firecracker_create_rootfs",
-		gomcp.WithDescription("Create an Alpine Linux rootfs for Firecracker testing"),
+		gomcp.WithDescription("Create an Alpine Linux rootfs for Firecracker testing. CLI: anvil firecracker create-rootfs"),
 		gomcp.WithString("output", gomcp.Description("Output file path")),
 		gomcp.WithNumber("size_mb", gomcp.Description("Size in MB (default: 512)")),
 		gomcp.WithBoolean("inject_binary", gomcp.Description("Inject anvil binary into rootfs")),

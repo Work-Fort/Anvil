@@ -136,7 +136,11 @@ func init() {
 	config.BindFlags(rootCmd.PersistentFlags())
 
 	// Add subcommands using factory functions
-	rootCmd.AddCommand(buildkernel.NewBuildKernelCmd())
+	// Hidden backwards-compat alias: anvil build-kernel → anvil kernel build
+	buildKernelAlias := buildkernel.NewBuildKernelCmd()
+	buildKernelAlias.Use = "build-kernel [version]"
+	buildKernelAlias.Hidden = true
+	rootCmd.AddCommand(buildKernelAlias)
 	rootCmd.AddCommand(clean.NewCleanCmd())
 	rootCmd.AddCommand(configCmd.NewConfigCmd())
 	rootCmd.AddCommand(firecracker.NewFirecrackerCmd())

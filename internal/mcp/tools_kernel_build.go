@@ -13,7 +13,7 @@ import (
 
 func registerKernelBuildTools(s *server.MCPServer, bm *BuildManager) {
 	s.AddTool(gomcp.NewTool("kernel_build",
-		gomcp.WithDescription("Start a kernel build (returns immediately with build ID). Use kernel_build_status or kernel_build_wait to monitor."),
+		gomcp.WithDescription("Start a kernel build (returns immediately with build ID). Use kernel_build_status or kernel_build_wait to monitor. CLI: anvil kernel build"),
 		gomcp.WithString("version", gomcp.Required(), gomcp.Description("Kernel version (e.g. 6.19.6)")),
 		gomcp.WithString("arch", gomcp.Required(), gomcp.Description("Target architecture: x86_64 or aarch64")),
 		gomcp.WithString("config_file", gomcp.Description("Custom kernel config file path (overrides anvil.yaml)")),
@@ -55,8 +55,8 @@ func registerKernelBuildTools(s *server.MCPServer, bm *BuildManager) {
 		return handleKernelBuildCancel(bm, req)
 	})
 
-	s.AddTool(gomcp.NewTool("kernel_list_versions",
-		gomcp.WithDescription("List available kernel versions from kernel.org"),
+	s.AddTool(gomcp.NewTool("kernel_versions",
+		gomcp.WithDescription("List available kernel versions from kernel.org. CLI: anvil kernel versions"),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), func(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 		latest, err := kernel.GetLatestKernelVersion()
@@ -66,8 +66,8 @@ func registerKernelBuildTools(s *server.MCPServer, bm *BuildManager) {
 		return jsonResult(map[string]any{"latest": latest})
 	})
 
-	s.AddTool(gomcp.NewTool("kernel_validate_version",
-		gomcp.WithDescription("Check if a kernel version exists on kernel.org"),
+	s.AddTool(gomcp.NewTool("kernel_version_check",
+		gomcp.WithDescription("Check if a kernel version exists on kernel.org. CLI: anvil kernel version-check"),
 		gomcp.WithString("version", gomcp.Required(), gomcp.Description("Kernel version to check")),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), func(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {

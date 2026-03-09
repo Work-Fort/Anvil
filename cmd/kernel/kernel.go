@@ -2,6 +2,7 @@
 package kernel
 
 import (
+	"github.com/Work-Fort/Anvil/cmd/buildkernel"
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -23,6 +24,7 @@ func NewKernelCmd() *cobra.Command {
 	}
 
 	// Add subcommands
+	cmd.AddCommand(buildkernel.NewBuildKernelCmd())
 	cmd.AddCommand(newGetCmd())
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newVersionsCmd())

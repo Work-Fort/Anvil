@@ -202,7 +202,7 @@ func runNonInteractiveWithFlags(flags InitFlags) error {
 	fmt.Println()
 	fmt.Println("Next steps:")
 	fmt.Println("  1. Customize kernel configs in configs/")
-	fmt.Println("  2. Build kernels: anvil build-kernel")
+	fmt.Println("  2. Build kernels: anvil kernel build")
 	fmt.Println("  3. Commit to git: git add . && git commit")
 
 	return nil

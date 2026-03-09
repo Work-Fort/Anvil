@@ -16,24 +16,24 @@ import (
 
 func registerKernelMgmtTools(s *server.MCPServer) {
 	s.AddTool(gomcp.NewTool("kernel_list",
-		gomcp.WithDescription("List installed kernel versions"),
+		gomcp.WithDescription("List installed kernel versions. CLI: anvil kernel list"),
 		gomcp.WithString("arch", gomcp.Description("Filter by architecture: x86_64 or aarch64")),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), handleKernelList)
 
-	s.AddTool(gomcp.NewTool("kernel_get",
+	s.AddTool(gomcp.NewTool("kernel_info",
 		gomcp.WithDescription("Get details of an installed kernel version"),
 		gomcp.WithString("version", gomcp.Required(), gomcp.Description("Kernel version")),
 		gomcp.WithReadOnlyHintAnnotation(true),
 	), handleKernelGet)
 
 	s.AddTool(gomcp.NewTool("kernel_set_default",
-		gomcp.WithDescription("Set the default kernel version"),
+		gomcp.WithDescription("Set the default kernel version. CLI: anvil kernel set"),
 		gomcp.WithString("version", gomcp.Required(), gomcp.Description("Version to set as default")),
 	), handleKernelSetDefault)
 
 	s.AddTool(gomcp.NewTool("kernel_remove",
-		gomcp.WithDescription("Remove an installed kernel version"),
+		gomcp.WithDescription("Remove an installed kernel version. CLI: anvil kernel remove"),
 		gomcp.WithString("version", gomcp.Required(), gomcp.Description("Version to remove")),
 		gomcp.WithDestructiveHintAnnotation(true),
 	), handleKernelRemove)
@@ -181,8 +181,8 @@ func handleKernelInstall(_ context.Context, req gomcp.CallToolRequest) (*gomcp.C
 	setDefault := req.GetBool("set_default", true)
 
 	// Read build stats from cache to get the BuildStats struct
-	buildDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "build")
-	statsFile := filepath.Join(buildDir, "build-stats.json")
+	artifactsDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "artifacts")
+	statsFile := filepath.Join(artifactsDir, "build-stats.json")
 	stats, err := kernel.ReadBuildStats(statsFile)
 	if err != nil {
 		return errResult(fmt.Errorf("no build stats found — build kernel %s for %s first: %w", version, arch, err))

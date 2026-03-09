@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewBuildKernelCmd creates the build-kernel command
+// NewBuildKernelCmd creates the kernel build command
 func NewBuildKernelCmd() *cobra.Command {
 	var (
 		buildArch              string
@@ -22,9 +22,8 @@ func NewBuildKernelCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:     "build-kernel [version]",
-		Aliases: []string{"build"},
-		Short:   "Build kernel from source",
+		Use:   "build [version]",
+		Short: "Build kernel from source",
 		Long: `Build Firecracker-compatible kernel from source.
 
 Downloads kernel source from kernel.org, verifies integrity, and builds
