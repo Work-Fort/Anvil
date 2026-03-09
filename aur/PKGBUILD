@@ -11,6 +11,8 @@ license=('Apache-2.0')
 depends=('glibc' 'libguestfs')
 makedepends=('go')
 optdepends=(
+    'make: kernel compilation'
+    'gcc: kernel compilation'
     'flex: kernel compilation'
     'bison: kernel compilation'
     'bc: kernel compilation'
