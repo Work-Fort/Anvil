@@ -5,7 +5,8 @@
 ## Prerequisites
 
 - [ ] `mise ci` passes (lint, vet, staticcheck, tests)
-- [ ] MCP server binary rebuilt (`mise run build`) and restarted
+- [ ] Binary rebuilt and installed (`mise run build && mise run install:local`)
+- [ ] MCP server restarted (verify with `get_context` version)
 - [ ] Clean working tree (`git status` shows no unexpected changes)
 
 ---
