@@ -29,9 +29,9 @@ type AvailableVersion struct {
 }
 
 // Get gets a kernel by trying to download pre-built version first, then building from source if needed
-func Get(version string, paths *config.Paths, buildOpts *BuildOptions) error {
+func Get(version string, client *github.Client, paths *config.Paths, buildOpts *BuildOptions) error {
 	// Try to download pre-built kernel first
-	if err := Download(version, paths); err == nil {
+	if err := Download(version, client, paths); err == nil {
 		// Download successful
 		return nil
 	}
@@ -51,12 +51,12 @@ func Get(version string, paths *config.Paths, buildOpts *BuildOptions) error {
 }
 
 // Download downloads and verifies a kernel version with optional progress callback
-func Download(version string, paths *config.Paths) error {
-	return DownloadWithProgress(version, paths, nil, nil)
+func Download(version string, client *github.Client, paths *config.Paths) error {
+	return DownloadWithProgress(version, client, paths, nil, nil)
 }
 
 // DownloadWithProgress downloads and verifies a kernel version with progress and status tracking
-func DownloadWithProgress(version string, paths *config.Paths, progressCallback func(float64), statusCallback func(string)) error {
+func DownloadWithProgress(version string, client *github.Client, paths *config.Paths, progressCallback func(float64), statusCallback func(string)) error {
 	arch, err := config.GetArch()
 	if err != nil {
 		return err
@@ -66,9 +66,6 @@ func DownloadWithProgress(version string, paths *config.Paths, progressCallback 
 	if err != nil {
 		return err
 	}
-
-	// Create GitHub client for API and downloads
-	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 
 	// If no version specified, get latest
 	if version == "" {
@@ -351,10 +348,8 @@ func Set(version string, paths *config.Paths) error {
 }
 
 // ShowVersions returns available kernel versions from GitHub with install status.
-func ShowVersions(paths *config.Paths) ([]AvailableVersion, error) {
+func ShowVersions(client *github.Client, paths *config.Paths) ([]AvailableVersion, error) {
 	log.Debug("Fetching available kernel versions from GitHub")
-
-	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 	parts := strings.Split(config.GitHubRepo, "/")
 	releases, err := client.GetReleases(parts[0], parts[1], 10)
 	if err != nil {

@@ -142,9 +142,10 @@ func GetDefaultVersion(target string) string {
 
 // ShowVersionSelector displays an interactive TUI to select a version
 func ShowVersionSelector(target string) error {
+	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
+
 	// Helper function to fetch and categorize versions
 	fetchVersions := func() ([]string, []string, error) {
-		client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 		var releases []github.Release
 		var err error
 
@@ -226,7 +227,7 @@ func ShowVersionSelector(target string) error {
 	downloadFn := func(version string, progressCallback func(float64), statusCallback func(string)) error {
 		switch target {
 		case "kernel":
-			return kernel.DownloadWithProgress(version, config.GlobalPaths, progressCallback, statusCallback)
+			return kernel.DownloadWithProgress(version, client, config.GlobalPaths, progressCallback, statusCallback)
 		case "firecracker":
 			return firecracker.DownloadWithProgress(version, config.GlobalPaths, progressCallback, statusCallback)
 		default:

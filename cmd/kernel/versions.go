@@ -6,6 +6,7 @@ import (
 
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
 	"github.com/Work-Fort/Anvil/pkg/config"
+	"github.com/Work-Fort/Anvil/pkg/github"
 	"github.com/Work-Fort/Anvil/pkg/kernel"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +22,8 @@ func newVersionsCmd() *cobra.Command {
 				return cmdutil.ShowVersionSelector("kernel")
 			}
 
-			versions, err := kernel.ShowVersions(config.GlobalPaths)
+			client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
+			versions, err := kernel.ShowVersions(client, config.GlobalPaths)
 			if err != nil {
 				return err
 			}
