@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -38,11 +36,33 @@ const (
 	PhaseComplete
 )
 
+// BuildKernelCallbacks provides domain operations for the build wizard.
+// This decouples the UI from direct kernel package function calls.
+type BuildKernelCallbacks struct {
+	// BuildFn starts a kernel build with the given options.
+	BuildFn func(opts kernel.BuildOptions) error
+	// CheckCachedFn checks for a cached build. Returns (hasCached, statsFile, error).
+	CheckCachedFn func(version string) (bool, string, error)
+	// ReadStatsFn reads build statistics from a stats file.
+	ReadStatsFn func(path string) (kernel.BuildStats, error)
+	// CheckInstalledFn checks if a build is already installed. Returns (isInstalled, version, error).
+	CheckInstalledFn func(stats kernel.BuildStats) (bool, string, error)
+	// InstallFn installs a built kernel. Returns (installedVersion, error).
+	InstallFn func(stats kernel.BuildStats, setAsDefault bool) (string, error)
+	// ArchiveFn archives an installed kernel to the given directory.
+	ArchiveFn func(stats kernel.BuildStats, archiveDir string) error
+	// ClearBuildCacheFn clears the build cache directories.
+	ClearBuildCacheFn func() error
+	// GetArchiveLocationFn returns the archive directory, or "" if not configured.
+	GetArchiveLocationFn func() string
+}
+
 // BuildKernelWizard is the unified tabbed wizard for kernel building
 type BuildKernelWizard struct {
-	theme  config.Theme
-	width  int
-	height int
+	theme     config.Theme
+	callbacks BuildKernelCallbacks
+	width     int
+	height    int
 
 	// Tabs configuration
 	tabs              []Tab
@@ -190,7 +210,7 @@ type NewBuildStartedMsg struct {
 }
 
 // NewBuildKernelWizard creates a new kernel build wizard with tabs
-func NewBuildKernelWizard(theme config.Theme, arch, verificationLevel, configFile string, forceRebuild bool) *BuildKernelWizard {
+func NewBuildKernelWizard(theme config.Theme, callbacks BuildKernelCallbacks, arch, verificationLevel, configFile string, forceRebuild bool) *BuildKernelWizard {
 
 	// Create spinners for each tab
 	spinners := make([]spinner.Model, 8)
@@ -223,7 +243,8 @@ func NewBuildKernelWizard(theme config.Theme, arch, verificationLevel, configFil
 	vp := viewport.New()
 
 	return &BuildKernelWizard{
-		theme: theme,
+		theme:     theme,
+		callbacks: callbacks,
 		tabs: []Tab{
 			{Title: "Select", State: TabActive, Spinner: spinners[0]},
 			{Title: "Download", State: TabPending, Spinner: spinners[1]},
@@ -253,7 +274,7 @@ func (m *BuildKernelWizard) Init() tea.Cmd {
 	// Skip cached build if force rebuild is requested
 	if !m.forceRebuild {
 		// Check if a cached build exists
-		hasCached, statsFile, err := kernel.CheckCachedBuild("", config.GlobalPaths)
+		hasCached, statsFile, err := m.callbacks.CheckCachedFn("")
 		if err != nil {
 			log.Debugf("Error checking cached build: %v", err)
 		}
@@ -798,7 +819,7 @@ func (m *BuildKernelWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.isCachedBuild = true // Mark as cached build (no actual build ran)
 
 		// Check if this build is already installed
-		if isInstalled, installedVer, err := kernel.CheckKernelInstalled(msg.Stats, config.GlobalPaths); err == nil && isInstalled {
+		if isInstalled, installedVer, err := m.callbacks.CheckInstalledFn(msg.Stats); err == nil && isInstalled {
 			m.kernelInstalled = true
 			m.installedVersion = installedVer
 			log.Debugf("Cached build is already installed: %s", installedVer)
@@ -943,7 +964,7 @@ func (m *BuildKernelWizard) startBuild() tea.Cmd {
 				log.Debugf("Build options: %+v", opts)
 
 				// Run actual kernel build - output will stream through pw
-				if err := kernel.Build(opts, config.GlobalPaths); err != nil {
+				if err := m.callbacks.BuildFn(opts); err != nil {
 					// Write error to pipe so it gets captured
 					pw.Write([]byte(fmt.Sprintf("[ERROR] Build failed: %s\n", err.Error())))
 				}
@@ -1405,7 +1426,7 @@ var ErrUserCancelled = fmt.Errorf("cancelled by user")
 // loadCachedBuild loads a cached build from stats file
 func (m *BuildKernelWizard) loadCachedBuild(statsFile string) tea.Cmd {
 	return func() tea.Msg {
-		stats, err := kernel.ReadBuildStats(statsFile)
+		stats, err := m.callbacks.ReadStatsFn(statsFile)
 		if err != nil {
 			return CachedBuildLoadedMsg{Error: err}
 		}
@@ -1416,18 +1437,9 @@ func (m *BuildKernelWizard) loadCachedBuild(statsFile string) tea.Cmd {
 // startNewBuild clears the build cache and restarts the wizard
 func (m *BuildKernelWizard) startNewBuild() tea.Cmd {
 	return func() tea.Msg {
-		// Clear the build cache
-		buildDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "build")
-		artifactsDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "artifacts")
-
-		// Remove build and artifacts directories
-		if err := os.RemoveAll(buildDir); err != nil {
-			return NewBuildStartedMsg{Error: fmt.Errorf("failed to clear build directory: %w", err)}
+		if err := m.callbacks.ClearBuildCacheFn(); err != nil {
+			return NewBuildStartedMsg{Error: err}
 		}
-		if err := os.RemoveAll(artifactsDir); err != nil {
-			return NewBuildStartedMsg{Error: fmt.Errorf("failed to clear artifacts directory: %w", err)}
-		}
-
 		log.Debugf("Build cache cleared")
 		return NewBuildStartedMsg{}
 	}
@@ -1455,7 +1467,7 @@ func (m *BuildKernelWizard) installKernel(setAsDefault bool) tea.Cmd {
 		}
 
 		// Install kernel with timestamp
-		installedVersion, err := kernel.InstallBuiltKernel(kernelStats, setAsDefault, config.GlobalPaths)
+		installedVersion, err := m.callbacks.InstallFn(kernelStats, setAsDefault)
 		if err != nil {
 			return InstallKernelMsg{
 				Success: false,
@@ -1464,8 +1476,8 @@ func (m *BuildKernelWizard) installKernel(setAsDefault bool) tea.Cmd {
 		}
 
 		// Archive to repo-local directory if configured
-		if archiveDir := config.GetKernelsArchiveLocation(); archiveDir != "" {
-			if err := kernel.ArchiveInstalledKernel(kernelStats, archiveDir); err != nil {
+		if archiveDir := m.callbacks.GetArchiveLocationFn(); archiveDir != "" {
+			if err := m.callbacks.ArchiveFn(kernelStats, archiveDir); err != nil {
 				return InstallKernelMsg{
 					Success: false,
 					Error:   fmt.Errorf("install succeeded but archiving failed: %w", err),
@@ -1483,8 +1495,8 @@ func (m *BuildKernelWizard) installKernel(setAsDefault bool) tea.Cmd {
 
 // RunBuildKernelWizard runs the kernel build wizard
 // This handles the ENTIRE build process: selection + build + progress
-func RunBuildKernelWizard(theme config.Theme, arch, verificationLevel, configFile string, forceRebuild bool) error {
-	m := NewBuildKernelWizard(theme, arch, verificationLevel, configFile, forceRebuild)
+func RunBuildKernelWizard(theme config.Theme, callbacks BuildKernelCallbacks, arch, verificationLevel, configFile string, forceRebuild bool) error {
+	m := NewBuildKernelWizard(theme, callbacks, arch, verificationLevel, configFile, forceRebuild)
 	p := tea.NewProgram(m)
 
 	finalModel, err := p.Run()

@@ -3,6 +3,8 @@ package buildkernel
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
 	"github.com/Work-Fort/Anvil/pkg/config"
@@ -39,7 +41,41 @@ If no version is specified, builds the latest stable kernel.`,
 			// If interactive and no version specified, run wizard
 			// Wizard handles EVERYTHING: version selection + build + progress
 			if version == "" && cmdutil.IsInteractive() {
-				err := ui.RunBuildKernelWizard(config.CurrentTheme, buildArch, buildVerificationLevel, buildConfig, buildForceRebuild)
+				callbacks := ui.BuildKernelCallbacks{
+					BuildFn: func(opts kernel.BuildOptions) error {
+						return kernel.Build(opts, config.GlobalPaths)
+					},
+					CheckCachedFn: func(v string) (bool, string, error) {
+						return kernel.CheckCachedBuild(v, config.GlobalPaths)
+					},
+					ReadStatsFn: func(path string) (kernel.BuildStats, error) {
+						return kernel.ReadBuildStats(path)
+					},
+					CheckInstalledFn: func(stats kernel.BuildStats) (bool, string, error) {
+						return kernel.CheckKernelInstalled(stats, config.GlobalPaths)
+					},
+					InstallFn: func(stats kernel.BuildStats, setAsDefault bool) (string, error) {
+						return kernel.InstallBuiltKernel(stats, setAsDefault, config.GlobalPaths)
+					},
+					ArchiveFn: func(stats kernel.BuildStats, archiveDir string) error {
+						return kernel.ArchiveInstalledKernel(stats, archiveDir)
+					},
+					ClearBuildCacheFn: func() error {
+						buildDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "build")
+						artifactsDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "artifacts")
+						if err := os.RemoveAll(buildDir); err != nil {
+							return fmt.Errorf("failed to clear build directory: %w", err)
+						}
+						if err := os.RemoveAll(artifactsDir); err != nil {
+							return fmt.Errorf("failed to clear artifacts directory: %w", err)
+						}
+						return nil
+					},
+					GetArchiveLocationFn: func() string {
+						return config.GetKernelsArchiveLocation()
+					},
+				}
+				err := ui.RunBuildKernelWizard(config.CurrentTheme, callbacks, buildArch, buildVerificationLevel, buildConfig, buildForceRebuild)
 				if err != nil {
 					// Check if user cancelled - exit gracefully without error
 					if err == ui.ErrUserCancelled {
