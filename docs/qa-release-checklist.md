@@ -79,9 +79,13 @@ rm -rf "$CONFIGDIR"
 
 Pick a recent stable version (e.g. the latest from step 2).
 
+Before building, ensure MCP is pointed at the anvil source repo so it uses the Firecracker-compatible kernel configs:
+
+- [ ] `set_repo_root` path=`<anvil-source-repo>` — must point to the anvil project root (contains `configs/microvm-kernel-*.config`)
+
 ### x86_64 Build (MCP async)
 
-- [ ] `kernel_build` version=`<version>` arch=`x86_64` — returns build_id
+- [ ] `kernel_build` version=`<version>` arch=`x86_64` config_file=`<anvil-source-repo>/configs/microvm-kernel-x86_64.config` — returns build_id
 - [ ] `kernel_build_status` build_id=`<id>` — shows running, phase, progress
 - [ ] `kernel_build_log` build_id=`<id>` — returns recent output lines
 - [ ] `kernel_build_wait` build_id=`<id>` — blocks until complete, returns stats
@@ -90,7 +94,7 @@ Pick a recent stable version (e.g. the latest from step 2).
 ### aarch64 Build (MCP async, cross-compile)
 
 - [ ] `check_build_tools` arch=`aarch64` — reports ready=true (cross-compiler found)
-- [ ] `kernel_build` version=`<version>` arch=`aarch64` — returns build_id
+- [ ] `kernel_build` version=`<version>` arch=`aarch64` config_file=`<anvil-source-repo>/configs/microvm-kernel-aarch64.config` — returns build_id
 - [ ] `kernel_build_status` build_id=`<id>` — shows running, phase, progress
 - [ ] `kernel_build_log` build_id=`<id>` — returns recent output lines
 - [ ] `kernel_build_wait` build_id=`<id>` — blocks until complete, returns stats
