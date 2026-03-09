@@ -39,3 +39,16 @@ after binary rebuilds to pick up changes.
 **Affected MCP tests in this QA pass:**
 - `firecracker_versions` returned static help string instead of version list
 - `firecracker_list` returned `is_default: false` for the default version
+
+## 4. MCP `kernel_build_wait` returns zeroed stats
+
+`kernel_build_wait` returns `status: completed` but all stats fields are zero.
+The build-stats.json file on disk has correct data (durations, sizes, hashes).
+The build manager isn't reading or forwarding the stats file to the response.
+
+**Reproduce:**
+1. `kernel_build` version=6.19.6 arch=x86_64 → returns build_id
+2. `kernel_build_wait` build_id=`<id>` → stats all zero
+3. `cat ~/.cache/anvil/build-kernel/artifacts/build-stats.json` → correct data
+
+**Impact:** MCP consumers can't get build stats without reading the file directly.
