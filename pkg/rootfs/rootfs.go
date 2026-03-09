@@ -165,6 +165,11 @@ func Create(opts CreateOptions) error {
 	if opts.Context == nil {
 		opts.Context = context.Background()
 	}
+	// Always set a default binary dest path for the init script template,
+	// even when not injecting. An empty path produces invalid shell syntax.
+	if opts.BinaryDestPath == "" {
+		opts.BinaryDestPath = "/usr/bin/vsock-server"
+	}
 	if opts.InjectBinary {
 		if opts.BinaryPath == "" {
 			// Extract the embedded static vsock-server binary
@@ -174,9 +179,6 @@ func Create(opts CreateOptions) error {
 			}
 			defer cleanup()
 			opts.BinaryPath = vsockPath
-		}
-		if opts.BinaryDestPath == "" {
-			opts.BinaryDestPath = "/usr/bin/vsock-server"
 		}
 	}
 
