@@ -77,9 +77,18 @@ rm -rf "$CONFIGDIR"
 
 Pick a recent stable version (e.g. the latest from step 2).
 
-### MCP (async build)
+### x86_64 Build (MCP async)
 
 - [ ] `kernel_build` version=`<version>` arch=`x86_64` — returns build_id
+- [ ] `kernel_build_status` build_id=`<id>` — shows running, phase, progress
+- [ ] `kernel_build_log` build_id=`<id>` — returns recent output lines
+- [ ] `kernel_build_wait` build_id=`<id>` — blocks until complete, returns stats
+- [ ] Build completes successfully (status=completed)
+
+### aarch64 Build (MCP async, cross-compile)
+
+- [ ] `check_build_tools` arch=`aarch64` — reports ready=true (cross-compiler found)
+- [ ] `kernel_build` version=`<version>` arch=`aarch64` — returns build_id
 - [ ] `kernel_build_status` build_id=`<id>` — shows running, phase, progress
 - [ ] `kernel_build_log` build_id=`<id>` — returns recent output lines
 - [ ] `kernel_build_wait` build_id=`<id>` — blocks until complete, returns stats
@@ -89,15 +98,16 @@ Pick a recent stable version (e.g. the latest from step 2).
 
 - [ ] `anvil kernel list` — shows the built version (if auto-installed)
 
-### MCP (install if needed)
+### MCP (install both architectures)
 
 - [ ] `kernel_install` version=`<version>` arch=`x86_64` set_default=true — installs from cache
 - [ ] `kernel_info` version=`<version>` — shows files, is_default=true
-- [ ] `kernel_list` — confirms version listed and marked default
+- [ ] `kernel_install` version=`<version>` arch=`aarch64` — installs aarch64 from cache
+- [ ] `kernel_list` — confirms both versions listed
 
 ### Kernel Config Tools
 
-- [ ] `kernel_config_list` config_file=`<project>/configs/kernel-x86_64.config` — lists options
+- [ ] `kernel_config_list` config_file=`<project>/configs/microvm-kernel-x86_64.config` — lists options
 - [ ] `kernel_config_get` config_file=`<config>` option=`CONFIG_VIRTIO` — returns value
 - [ ] `kernel_config_list` config_file=`<config>` filter=`VIRTIO` — filtered results
 
@@ -195,14 +205,52 @@ rm -rf "$TESTDIR"
 
 ---
 
-## 6. Archive (repo mode only)
+## 6. Archive & Sign Release (repo mode only)
 
 If in a repo with `anvil.yaml`:
 
 - [ ] `set_repo_root` path=`<repo>` — switches to repo mode
-- [ ] `archive_kernel` version=`<version>` arch=`x86_64` — archives built kernel
-- [ ] `archive_list` — shows archived kernel
+- [ ] `archive_kernel` version=`<version>` arch=`x86_64` — archives x86_64 kernel
+- [ ] `archive_kernel` version=`<version>` arch=`aarch64` — archives aarch64 kernel
+- [ ] `archive_list` — shows both archived kernels
 - [ ] `archive_get` version=`<version>` arch=`x86_64` — returns details
+- [ ] `archive_get` version=`<version>` arch=`aarch64` — returns details
+
+### Sign & Verify archived kernels
+
+Test signing in an isolated temp repo so you never touch production keys:
+
+```bash
+export SIGNDIR=$(mktemp -d)
+cd "$SIGNDIR"
+ANVIL_SIGNING_PASSWORD=test_password anvil init \
+  --key-name "QA Sign Test" --key-email "qa-sign@test.com" --use-tui=false
+```
+
+Copy archived artifacts into the test repo for signing:
+
+```bash
+cp -r <repo>/archive "$SIGNDIR/archive"
+```
+
+Run sign & verify from the test repo directory:
+
+- [ ] CLI `cd "$SIGNDIR" && ANVIL_SIGNING_PASSWORD=test_password anvil signing sign archive/x86_64/<version>` — exits 0
+- [ ] CLI `cd "$SIGNDIR" && anvil signing verify archive/x86_64/<version>` — exits 0
+- [ ] CLI `cd "$SIGNDIR" && ANVIL_SIGNING_PASSWORD=test_password anvil signing sign archive/aarch64/<version>` — exits 0
+- [ ] CLI `cd "$SIGNDIR" && anvil signing verify archive/aarch64/<version>` — exits 0
+- [ ] MCP: `set_repo_root` path=`$SIGNDIR` — switches context to test repo
+- [ ] MCP: `signing_sign` path=`$SIGNDIR/archive/x86_64/<version>` — status=signed
+- [ ] MCP: `signing_verify` path=`$SIGNDIR/archive/x86_64/<version>` — verified=true
+- [ ] MCP: `signing_sign` path=`$SIGNDIR/archive/aarch64/<version>` — status=signed
+- [ ] MCP: `signing_verify` path=`$SIGNDIR/archive/aarch64/<version>` — verified=true
+- [ ] MCP: `set_repo_root` path=`<original_repo>` — switch back
+
+Clean up:
+
+```bash
+rm -rf "$SIGNDIR"
+```
 
 ---
 

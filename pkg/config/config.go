@@ -176,13 +176,17 @@ func GetArch() (string, error) {
 	}
 }
 
-// GetKernelName returns the kernel binary name based on architecture
+// GetKernelName returns the kernel binary name based on host architecture
 func GetKernelName() (string, error) {
 	arch, err := GetArch()
 	if err != nil {
 		return "", err
 	}
+	return GetKernelNameForArch(arch)
+}
 
+// GetKernelNameForArch returns the kernel binary name for a given architecture
+func GetKernelNameForArch(arch string) (string, error) {
 	switch arch {
 	case "x86_64":
 		return "vmlinux", nil

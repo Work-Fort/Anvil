@@ -323,18 +323,15 @@ func getKernelPath(version string, paths *config.Paths) (string, error) {
 
 // getFirecrackerBinary finds the Firecracker binary
 func getFirecrackerBinary(paths *config.Paths) (string, error) {
-	// Use default Firecracker
-	defaultLink := filepath.Join(paths.DataDir, "firecracker", "default")
+	// Use default Firecracker via BinDir symlink (same as Set/List)
+	defaultLink := filepath.Join(paths.BinDir, "firecracker")
 	target, err := os.Readlink(defaultLink)
 	if err != nil {
 		return "", fmt.Errorf("no default Firecracker version set: %w", err)
 	}
 
-	// Extract version from symlink target path
-	// Path format: .../firecracker/1.14.1/firecracker
-	// Get parent directory name which is the version
-	version := filepath.Base(filepath.Dir(target))
-	binaryPath := filepath.Join(paths.DataDir, "firecracker", version, "firecracker")
+	// The symlink target is the full path to the binary
+	binaryPath := target
 
 	if _, err := os.Stat(binaryPath); err != nil {
 		return "", fmt.Errorf("firecracker binary not found: %s", binaryPath)

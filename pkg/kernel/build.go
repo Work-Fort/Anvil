@@ -491,12 +491,12 @@ func collectBuildStats(version, kernelPath string, totalDuration, downloadDurati
 
 // InstallBuiltKernel installs a built kernel to the kernels directory with a timestamped name
 func InstallBuiltKernel(stats BuildStats, setAsDefault bool, paths *config.Paths) (string, error) {
-	arch, err := config.GetArch()
-	if err != nil {
-		return "", err
-	}
+	// Derive arch from build output path (e.g. vmlinux-6.19.6-x86_64 → x86_64)
+	base := filepath.Base(stats.OutputPath)
+	parts := strings.Split(base, "-")
+	arch := parts[len(parts)-1]
 
-	kernelName, err := config.GetKernelName()
+	kernelName, err := config.GetKernelNameForArch(arch)
 	if err != nil {
 		return "", err
 	}
