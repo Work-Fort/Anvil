@@ -664,6 +664,98 @@ func updateArchiveIndex(archiveDir, arch, version, kernelPath string) error {
 	return os.WriteFile(indexPath, data, 0644)
 }
 
+// ArchiveEntry describes a single archived kernel.
+type ArchiveEntry struct {
+	Arch    string `json:"arch"`
+	Version string `json:"version"`
+	Path    string `json:"path"`
+}
+
+// ArchiveList returns all archived kernels from the index.json in archiveDir,
+// optionally filtered by architecture.
+func ArchiveList(archFilter string, archiveDir string) ([]ArchiveEntry, error) {
+	indexPath := filepath.Join(archiveDir, "index.json")
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []ArchiveEntry{}, nil
+		}
+		return nil, err
+	}
+
+	var index map[string]map[string]string
+	if err := json.Unmarshal(data, &index); err != nil {
+		return nil, fmt.Errorf("failed to parse archive index: %w", err)
+	}
+
+	var archives []ArchiveEntry
+	for arch, versions := range index {
+		if archFilter != "" && arch != archFilter {
+			continue
+		}
+		for version, path := range versions {
+			archives = append(archives, ArchiveEntry{
+				Arch:    arch,
+				Version: version,
+				Path:    path,
+			})
+		}
+	}
+
+	if archives == nil {
+		archives = []ArchiveEntry{}
+	}
+
+	return archives, nil
+}
+
+// ArchiveDetail contains detailed information about an archived kernel.
+type ArchiveDetail struct {
+	Version  string `json:"version"`
+	Arch     string `json:"arch"`
+	Path     string `json:"path"`
+	FullPath string `json:"full_path"`
+	Size     int64  `json:"size"`
+}
+
+// ArchiveGet returns details for a specific archived kernel version and architecture.
+func ArchiveGet(version, arch, archiveDir string) (*ArchiveDetail, error) {
+	indexPath := filepath.Join(archiveDir, "index.json")
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		return nil, fmt.Errorf("archive index not found: %w", err)
+	}
+
+	var index map[string]map[string]string
+	if err := json.Unmarshal(data, &index); err != nil {
+		return nil, fmt.Errorf("failed to parse archive index: %w", err)
+	}
+
+	archVersions, ok := index[arch]
+	if !ok {
+		return nil, fmt.Errorf("no archives for architecture %s", arch)
+	}
+
+	kernelPath, ok := archVersions[version]
+	if !ok {
+		return nil, fmt.Errorf("kernel %s not found in %s archive", version, arch)
+	}
+
+	fullPath := filepath.Join(archiveDir, kernelPath)
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("archived file missing: %w", err)
+	}
+
+	return &ArchiveDetail{
+		Version:  version,
+		Arch:     arch,
+		Path:     kernelPath,
+		FullPath: fullPath,
+		Size:     info.Size(),
+	}, nil
+}
+
 // GetLatestKernelVersion fetches the latest stable kernel version from kernel.org
 func GetLatestKernelVersion() (string, error) {
 	resp, err := http.Get("https://www.kernel.org/releases.json")

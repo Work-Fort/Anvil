@@ -4,7 +4,6 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -63,7 +62,7 @@ func handleKernelList(_ context.Context, req gomcp.CallToolRequest) (*gomcp.Call
 			"version":    ki.Version,
 			"is_default": ki.IsDefault,
 			"files":      ki.Files,
-			"path":       filepath.Join(config.GlobalPaths.KernelsDir, ki.Version),
+			"path":       ki.Path,
 		})
 	}
 
@@ -92,7 +91,7 @@ func handleKernelGet(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallT
 		if ki.Version == version {
 			return jsonResult(map[string]any{
 				"version":    ki.Version,
-				"path":       filepath.Join(config.GlobalPaths.KernelsDir, ki.Version),
+				"path":       ki.Path,
 				"files":      ki.Files,
 				"is_default": ki.IsDefault,
 			})
@@ -124,13 +123,8 @@ func handleKernelRemove(_ context.Context, req gomcp.CallToolRequest) (*gomcp.Ca
 		return errResult(err)
 	}
 
-	kernelDir := filepath.Join(config.GlobalPaths.KernelsDir, version)
-	if _, err := os.Stat(kernelDir); err != nil {
-		return errResult(fmt.Errorf("kernel version %s not found", version))
-	}
-
-	if err := os.RemoveAll(kernelDir); err != nil {
-		return errResult(fmt.Errorf("failed to remove kernel: %w", err))
+	if err := kernel.Remove(version, config.GlobalPaths); err != nil {
+		return errResult(err)
 	}
 
 	return jsonResult(map[string]any{

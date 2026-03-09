@@ -109,6 +109,37 @@ while true; do
 done
 `
 
+// Clean removes all rootfs images (*.ext4 files) from the given data directory.
+// Returns the list of removed filenames.
+func Clean(dataDir string) ([]string, error) {
+	entries, err := os.ReadDir(dataDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("failed to read data directory: %w", err)
+	}
+
+	var removed []string
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".ext4" {
+			continue
+		}
+
+		path := filepath.Join(dataDir, entry.Name())
+		if err := os.Remove(path); err != nil {
+			return nil, fmt.Errorf("failed to remove %s: %w", path, err)
+		}
+		removed = append(removed, entry.Name())
+	}
+
+	if removed == nil {
+		removed = []string{}
+	}
+
+	return removed, nil
+}
+
 // Create creates an Alpine-based rootfs for Firecracker with optional anvil binary injection
 func Create(opts CreateOptions) error {
 	startTime := time.Now()

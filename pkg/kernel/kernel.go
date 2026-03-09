@@ -19,6 +19,7 @@ type KernelInfo struct {
 	Version   string   `json:"version"`
 	IsDefault bool     `json:"is_default"`
 	Files     []string `json:"files"`
+	Path      string   `json:"path"`
 }
 
 // AvailableVersion describes a kernel version available for download
@@ -295,13 +296,14 @@ func List(paths *config.Paths) ([]KernelInfo, string, error) {
 			continue
 		}
 		version := entry.Name()
+		versionDir := filepath.Join(paths.KernelsDir, version)
 		ki := KernelInfo{
 			Version:   version,
 			IsDefault: version == defaultVersion,
+			Path:      versionDir,
 		}
 
 		// List files in version directory
-		versionDir := filepath.Join(paths.KernelsDir, version)
 		files, err := os.ReadDir(versionDir)
 		if err == nil {
 			for _, f := range files {
@@ -345,6 +347,122 @@ func Set(version string, paths *config.Paths) error {
 	}
 
 	return nil
+}
+
+// Remove removes an installed kernel version.
+func Remove(version string, paths *config.Paths) error {
+	kernelDir := filepath.Join(paths.KernelsDir, version)
+	if _, err := os.Stat(kernelDir); err != nil {
+		return fmt.Errorf("kernel version %s not found", version)
+	}
+
+	log.Debugf("Removing kernel %s", version)
+
+	if err := os.RemoveAll(kernelDir); err != nil {
+		return fmt.Errorf("failed to remove kernel: %w", err)
+	}
+
+	return nil
+}
+
+// Clean removes installed kernel versions. If keepDefault is true, the default
+// version is preserved; otherwise all versions and the default symlink are removed.
+// Returns the list of removed version strings.
+func Clean(keepDefault bool, paths *config.Paths) ([]string, error) {
+	if !keepDefault {
+		// Remove entire kernels directory
+		if err := os.RemoveAll(paths.KernelsDir); err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to remove kernels: %w", err)
+		}
+
+		removed := []string{"All kernels"}
+
+		// Remove kernel symlink
+		kernelName, err := config.GetKernelName()
+		if err == nil {
+			symlinkPath := filepath.Join(paths.DataDir, kernelName)
+			os.Remove(symlinkPath)
+			removed = append(removed, "Kernel symlink")
+		}
+
+		return removed, nil
+	}
+
+	// Remove only non-default kernel versions
+	defaultVersion := ""
+	kernelName, err := config.GetKernelName()
+	if err == nil {
+		kernelSymlink := filepath.Join(paths.DataDir, kernelName)
+		if target, linkErr := os.Readlink(kernelSymlink); linkErr == nil {
+			parts := strings.Split(target, "/")
+			for i, part := range parts {
+				if part == "kernels" && i+1 < len(parts) {
+					defaultVersion = parts[i+1]
+					break
+				}
+			}
+		}
+	}
+
+	entries, err := os.ReadDir(paths.KernelsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("failed to read kernels directory: %w", err)
+	}
+
+	var removed []string
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "default" {
+			continue
+		}
+
+		version := entry.Name()
+		if version == defaultVersion {
+			continue
+		}
+
+		path := filepath.Join(paths.KernelsDir, version)
+		if err := os.RemoveAll(path); err != nil {
+			return nil, fmt.Errorf("failed to remove %s: %w", path, err)
+		}
+		removed = append(removed, version)
+	}
+
+	if removed == nil {
+		removed = []string{}
+	}
+
+	return removed, nil
+}
+
+// CleanBuildCache removes the kernel build cache. If all is true, the entire
+// build directory is removed; otherwise only the build subdirectory is removed
+// (keeping the source cache). Returns a status string and the cleaned path.
+func CleanBuildCache(all bool, paths *config.Paths) (status string, cleanedPath string, err error) {
+	buildDir := paths.KernelBuildDir
+	if _, err := os.Stat(buildDir); err != nil {
+		if os.IsNotExist(err) {
+			return "clean", buildDir, nil
+		}
+		return "", "", err
+	}
+
+	if all {
+		if err := os.RemoveAll(buildDir); err != nil {
+			return "", "", fmt.Errorf("failed to clean build cache: %w", err)
+		}
+		return "cleaned", buildDir, nil
+	}
+
+	// Remove only the build subdirectory, keep source cache
+	buildSubdir := filepath.Join(buildDir, "build")
+	if err := os.RemoveAll(buildSubdir); err != nil {
+		return "", "", fmt.Errorf("failed to clean build output: %w", err)
+	}
+
+	return "cleaned", buildSubdir, nil
 }
 
 // ShowVersions returns available kernel versions from GitHub with install status.

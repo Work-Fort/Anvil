@@ -213,6 +213,72 @@ func Remove(version string, paths *config.Paths) error {
 	return nil
 }
 
+// Clean removes installed Firecracker versions. If keepDefault is true, the default
+// version is preserved; otherwise all versions and the default symlink are removed.
+// Returns the list of removed version/label strings.
+func Clean(keepDefault bool, paths *config.Paths) ([]string, error) {
+	if !keepDefault {
+		// Remove entire firecracker directory
+		if err := os.RemoveAll(paths.FirecrackerDir); err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to remove Firecracker: %w", err)
+		}
+
+		removed := []string{"All Firecracker versions"}
+
+		// Remove firecracker symlink in bin
+		symlinkPath := filepath.Join(paths.BinDir, "firecracker")
+		os.Remove(symlinkPath)
+		removed = append(removed, "Firecracker symlink")
+
+		return removed, nil
+	}
+
+	// Remove only non-default Firecracker versions
+	defaultFCVersion := ""
+	fcSymlink := filepath.Join(paths.BinDir, "firecracker")
+	if target, linkErr := os.Readlink(fcSymlink); linkErr == nil {
+		parts := strings.Split(target, "/")
+		for i, part := range parts {
+			if part == "firecracker" && i+1 < len(parts) {
+				defaultFCVersion = parts[i+1]
+				break
+			}
+		}
+	}
+
+	entries, err := os.ReadDir(paths.FirecrackerDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("failed to read Firecracker directory: %w", err)
+	}
+
+	var removed []string
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "default" {
+			continue
+		}
+
+		version := entry.Name()
+		if version == defaultFCVersion {
+			continue
+		}
+
+		path := filepath.Join(paths.FirecrackerDir, version)
+		if err := os.RemoveAll(path); err != nil {
+			return nil, fmt.Errorf("failed to remove %s: %w", path, err)
+		}
+		removed = append(removed, version)
+	}
+
+	if removed == nil {
+		removed = []string{}
+	}
+
+	return removed, nil
+}
+
 // ShowVersions returns available Firecracker versions from GitHub with install status.
 func ShowVersions(client *github.Client, paths *config.Paths) ([]AvailableFirecracker, error) {
 	log.Debug("Fetching available Firecracker versions from GitHub")

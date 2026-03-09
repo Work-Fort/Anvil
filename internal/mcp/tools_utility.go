@@ -3,14 +3,13 @@ package mcp
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/Work-Fort/Anvil/pkg/config"
+	"github.com/Work-Fort/Anvil/pkg/firecracker"
+	"github.com/Work-Fort/Anvil/pkg/kernel"
+	"github.com/Work-Fort/Anvil/pkg/rootfs"
 	gomcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -88,102 +87,32 @@ func handleCheckBuildTools(_ context.Context, req gomcp.CallToolRequest) (*gomcp
 func handleCleanBuildCache(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 	all := req.GetBool("all", false)
 
-	buildDir := config.GlobalPaths.KernelBuildDir
-	if _, err := os.Stat(buildDir); err != nil {
-		if os.IsNotExist(err) {
-			return jsonResult(map[string]any{"status": "clean", "message": "build cache already empty"})
-		}
+	status, path, err := kernel.CleanBuildCache(all, config.GlobalPaths)
+	if err != nil {
 		return errResult(err)
 	}
 
-	if all {
-		if err := os.RemoveAll(buildDir); err != nil {
-			return errResult(fmt.Errorf("failed to clean build cache: %w", err))
-		}
-		return jsonResult(map[string]any{"status": "cleaned", "path": buildDir})
+	if status == "clean" {
+		return jsonResult(map[string]any{"status": "clean", "message": "build cache already empty"})
 	}
 
-	// Remove only the build subdirectory, keep source cache
-	buildSubdir := filepath.Join(buildDir, "build")
-	if err := os.RemoveAll(buildSubdir); err != nil {
-		return errResult(fmt.Errorf("failed to clean build output: %w", err))
-	}
-
-	return jsonResult(map[string]any{"status": "cleaned", "path": buildSubdir})
+	return jsonResult(map[string]any{"status": status, "path": path})
 }
 
 func handleCleanKernel(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 	all := req.GetBool("all", false)
-	kernelsDir := config.GlobalPaths.KernelsDir
+
+	removed, err := kernel.Clean(!all, config.GlobalPaths)
+	if err != nil {
+		return errResult(err)
+	}
 
 	if all {
-		// Remove entire kernels directory
-		if err := os.RemoveAll(kernelsDir); err != nil && !os.IsNotExist(err) {
-			return errResult(fmt.Errorf("failed to remove kernels: %w", err))
-		}
-
-		removed := []string{"All kernels"}
-
-		// Remove kernel symlink
-		kernelName, err := config.GetKernelName()
-		if err == nil {
-			symlinkPath := filepath.Join(config.GlobalPaths.DataDir, kernelName)
-			os.Remove(symlinkPath)
-			removed = append(removed, "Kernel symlink")
-		}
-
 		return jsonResult(map[string]any{
 			"status":  "cleaned",
 			"removed": removed,
 			"count":   len(removed),
 		})
-	}
-
-	// Remove only non-default kernel versions
-	// Determine the default kernel version from the data dir symlink (matches CLI behavior)
-	defaultKernelVersion := ""
-	kernelName, err := config.GetKernelName()
-	if err == nil {
-		kernelSymlink := filepath.Join(config.GlobalPaths.DataDir, kernelName)
-		if target, linkErr := os.Readlink(kernelSymlink); linkErr == nil {
-			parts := strings.Split(target, "/")
-			for i, part := range parts {
-				if part == "kernels" && i+1 < len(parts) {
-					defaultKernelVersion = parts[i+1]
-					break
-				}
-			}
-		}
-	}
-
-	entries, err := os.ReadDir(kernelsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return jsonResult(map[string]any{"removed": []string{}, "count": 0})
-		}
-		return errResult(fmt.Errorf("failed to read kernels directory: %w", err))
-	}
-
-	var removed []string
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == "default" {
-			continue
-		}
-
-		version := entry.Name()
-		if version == defaultKernelVersion {
-			continue
-		}
-
-		path := filepath.Join(kernelsDir, version)
-		if err := os.RemoveAll(path); err != nil {
-			return errResult(fmt.Errorf("failed to remove %s: %w", path, err))
-		}
-		removed = append(removed, version)
-	}
-
-	if removed == nil {
-		removed = []string{}
 	}
 
 	return jsonResult(map[string]any{
@@ -194,70 +123,18 @@ func handleCleanKernel(_ context.Context, req gomcp.CallToolRequest) (*gomcp.Cal
 
 func handleCleanFirecracker(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 	all := req.GetBool("all", false)
-	fcDir := config.GlobalPaths.FirecrackerDir
+
+	removed, err := firecracker.Clean(!all, config.GlobalPaths)
+	if err != nil {
+		return errResult(err)
+	}
 
 	if all {
-		// Remove entire firecracker directory
-		if err := os.RemoveAll(fcDir); err != nil && !os.IsNotExist(err) {
-			return errResult(fmt.Errorf("failed to remove Firecracker: %w", err))
-		}
-
-		removed := []string{"All Firecracker versions"}
-
-		// Remove firecracker symlink in bin
-		symlinkPath := filepath.Join(config.GlobalPaths.BinDir, "firecracker")
-		os.Remove(symlinkPath)
-		removed = append(removed, "Firecracker symlink")
-
 		return jsonResult(map[string]any{
 			"status":  "cleaned",
 			"removed": removed,
 			"count":   len(removed),
 		})
-	}
-
-	// Remove only non-default Firecracker versions
-	// Determine the default version from the bin dir symlink (matches CLI behavior)
-	defaultFCVersion := ""
-	fcSymlink := filepath.Join(config.GlobalPaths.BinDir, "firecracker")
-	if target, linkErr := os.Readlink(fcSymlink); linkErr == nil {
-		parts := strings.Split(target, "/")
-		for i, part := range parts {
-			if part == "firecracker" && i+1 < len(parts) {
-				defaultFCVersion = parts[i+1]
-				break
-			}
-		}
-	}
-
-	entries, err := os.ReadDir(fcDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return jsonResult(map[string]any{"removed": []string{}, "count": 0})
-		}
-		return errResult(fmt.Errorf("failed to read Firecracker directory: %w", err))
-	}
-
-	var removed []string
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == "default" {
-			continue
-		}
-
-		version := entry.Name()
-		if version == defaultFCVersion {
-			continue
-		}
-
-		path := filepath.Join(fcDir, version)
-		if err := os.RemoveAll(path); err != nil {
-			return errResult(fmt.Errorf("failed to remove %s: %w", path, err))
-		}
-		removed = append(removed, version)
-	}
-
-	if removed == nil {
-		removed = []string{}
 	}
 
 	return jsonResult(map[string]any{
@@ -267,31 +144,9 @@ func handleCleanFirecracker(_ context.Context, req gomcp.CallToolRequest) (*gomc
 }
 
 func handleCleanRootfs(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
-	dataDir := config.GlobalPaths.DataDir
-
-	entries, err := os.ReadDir(dataDir)
+	removed, err := rootfs.Clean(config.GlobalPaths.DataDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return jsonResult(map[string]any{"removed": []string{}, "count": 0})
-		}
-		return errResult(fmt.Errorf("failed to read data directory: %w", err))
-	}
-
-	var removed []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".ext4") {
-			continue
-		}
-
-		path := filepath.Join(dataDir, entry.Name())
-		if err := os.Remove(path); err != nil {
-			return errResult(fmt.Errorf("failed to remove %s: %w", path, err))
-		}
-		removed = append(removed, entry.Name())
-	}
-
-	if removed == nil {
-		removed = []string{}
+		return errResult(err)
 	}
 
 	return jsonResult(map[string]any{
