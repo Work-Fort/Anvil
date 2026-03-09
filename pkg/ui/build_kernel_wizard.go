@@ -40,6 +40,7 @@ const (
 
 // BuildKernelWizard is the unified tabbed wizard for kernel building
 type BuildKernelWizard struct {
+	theme  config.Theme
 	width  int
 	height int
 
@@ -189,8 +190,7 @@ type NewBuildStartedMsg struct {
 }
 
 // NewBuildKernelWizard creates a new kernel build wizard with tabs
-func NewBuildKernelWizard(arch, verificationLevel, configFile string, forceRebuild bool) *BuildKernelWizard {
-	theme := config.CurrentTheme
+func NewBuildKernelWizard(theme config.Theme, arch, verificationLevel, configFile string, forceRebuild bool) *BuildKernelWizard {
 
 	// Create spinners for each tab
 	spinners := make([]spinner.Model, 8)
@@ -223,6 +223,7 @@ func NewBuildKernelWizard(arch, verificationLevel, configFile string, forceRebui
 	vp := viewport.New()
 
 	return &BuildKernelWizard{
+		theme: theme,
 		tabs: []Tab{
 			{Title: "Select", State: TabActive, Spinner: spinners[0]},
 			{Title: "Download", State: TabPending, Spinner: spinners[1]},
@@ -1045,7 +1046,7 @@ func (m *BuildKernelWizard) View() tea.View {
 
 	// Show loading screen when loading cached build
 	if m.loadingCachedBuild {
-		theme := config.CurrentTheme
+		theme := m.theme
 		header := theme.RenderHeader(m.width, "BUILD WIZARD", "KERNEL")
 		loadingMsg := lipgloss.NewStyle().
 			Foreground(theme.GetPrimaryColor()).
@@ -1065,7 +1066,7 @@ func (m *BuildKernelWizard) View() tea.View {
 		return v
 	}
 
-	theme := config.CurrentTheme
+	theme := m.theme
 
 	// Header using theme helper
 	header := theme.RenderHeader(m.width, "BUILD WIZARD", "KERNEL")
@@ -1083,14 +1084,14 @@ func (m *BuildKernelWizard) View() tea.View {
 	)
 	contentHeight := m.height - headerLines - tabLines - helpLines - blankLines - borderLines
 	// In lipgloss v2, Width() sets total rendered width (borders are inside)
-	contentPane := RenderTabContent(content, m.width, contentHeight, config.CurrentTheme)
+	contentPane := RenderTabContent(content, m.width, contentHeight, m.theme)
 	actualContentWidth := lipgloss.Width(contentPane)
 
 	// Render tabs to match content pane's actual rendered width
 	tabsRow := RenderTabs(m.tabs, TabsConfig{
 		ActiveIndex: int(m.activePhase),
 		Width:       actualContentWidth,
-	}, config.CurrentTheme)
+	}, m.theme)
 
 	// Help footer using theme helper
 	var helpContent string
@@ -1144,7 +1145,7 @@ func (m *BuildKernelWizard) View() tea.View {
 
 // getPhaseContent returns the content for a given phase
 func (m *BuildKernelWizard) getPhaseContent(phase BuildKernelPhase) string {
-	theme := config.CurrentTheme
+	theme := m.theme
 
 	switch phase {
 	case PhaseSelectVersion:
@@ -1267,7 +1268,7 @@ func (m *BuildKernelWizard) getPhaseContent(phase BuildKernelPhase) string {
 
 // renderBuildStats renders the build completion statistics
 func (m *BuildKernelWizard) renderBuildStats() string {
-	theme := config.CurrentTheme
+	theme := m.theme
 	stats := m.buildStats
 
 	// Format file sizes
@@ -1481,8 +1482,8 @@ func (m *BuildKernelWizard) installKernel(setAsDefault bool) tea.Cmd {
 
 // RunBuildKernelWizard runs the kernel build wizard
 // This handles the ENTIRE build process: selection + build + progress
-func RunBuildKernelWizard(arch, verificationLevel, configFile string, forceRebuild bool) error {
-	m := NewBuildKernelWizard(arch, verificationLevel, configFile, forceRebuild)
+func RunBuildKernelWizard(theme config.Theme, arch, verificationLevel, configFile string, forceRebuild bool) error {
+	m := NewBuildKernelWizard(theme, arch, verificationLevel, configFile, forceRebuild)
 	p := tea.NewProgram(m)
 
 	finalModel, err := p.Run()

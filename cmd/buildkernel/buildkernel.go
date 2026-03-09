@@ -39,7 +39,7 @@ If no version is specified, builds the latest stable kernel.`,
 			// If interactive and no version specified, run wizard
 			// Wizard handles EVERYTHING: version selection + build + progress
 			if version == "" && cmdutil.IsInteractive() {
-				err := ui.RunBuildKernelWizard(buildArch, buildVerificationLevel, buildConfig, buildForceRebuild)
+				err := ui.RunBuildKernelWizard(config.CurrentTheme, buildArch, buildVerificationLevel, buildConfig, buildForceRebuild)
 				if err != nil {
 					// Check if user cancelled - exit gracefully without error
 					if err == ui.ErrUserCancelled {
