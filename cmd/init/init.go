@@ -167,14 +167,11 @@ func runNonInteractiveWithFlags(flags InitFlags) error {
 		return fmt.Errorf("--key-name and --key-email are required in non-interactive mode")
 	}
 
-	// Password is read from stdin or ENV — never from a flag
-	password, err := signing.GetSigningPassword(
-		signing.PasswordSourceAuto,
-		"Enter password to encrypt signing key",
-	)
-	if err != nil {
-		return fmt.Errorf("key password required: use %s env var or pipe via stdin: %w",
-			signing.EnvSigningPassword, err)
+	// Non-interactive: read password from env var only (no TUI)
+	password := os.Getenv(signing.EnvSigningPassword)
+	if password == "" {
+		return fmt.Errorf("key password required in non-interactive mode: set %s env var",
+			signing.EnvSigningPassword)
 	}
 
 	settings := initpkg.InitSettings{

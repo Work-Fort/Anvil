@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	signingpkg "github.com/Work-Fort/Anvil/pkg/signing"
 	"github.com/Work-Fort/Anvil/pkg/ui"
 )
 
@@ -22,11 +23,6 @@ const (
 	PasswordSourceStdin
 	// PasswordSourceTUI uses interactive TUI prompt
 	PasswordSourceTUI
-)
-
-const (
-	// EnvSigningPassword is the environment variable name for signing password
-	EnvSigningPassword = "ANVIL_SIGNING_PASSWORD"
 )
 
 // GetSigningPassword retrieves the password using the specified source
@@ -64,9 +60,9 @@ func GetSigningPassword(source PasswordSource, prompt string) (string, error) {
 
 // getPasswordFromEnv retrieves password from environment variable
 func getPasswordFromEnv() (string, error) {
-	password := os.Getenv(EnvSigningPassword)
+	password := os.Getenv(signingpkg.EnvSigningPassword)
 	if password == "" {
-		return "", fmt.Errorf("environment variable %s not set", EnvSigningPassword)
+		return "", fmt.Errorf("environment variable %s not set", signingpkg.EnvSigningPassword)
 	}
 	return password, nil
 }

@@ -4,6 +4,8 @@ package signing
 import (
 	"os"
 	"testing"
+
+	signingpkg "github.com/Work-Fort/Anvil/pkg/signing"
 )
 
 func TestParsePasswordSource(t *testing.T) {
@@ -13,48 +15,13 @@ func TestParsePasswordSource(t *testing.T) {
 		expected PasswordSource
 		wantErr  bool
 	}{
-		{
-			name:     "auto",
-			input:    "auto",
-			expected: PasswordSourceAuto,
-			wantErr:  false,
-		},
-		{
-			name:     "empty string (defaults to auto)",
-			input:    "",
-			expected: PasswordSourceAuto,
-			wantErr:  false,
-		},
-		{
-			name:     "env",
-			input:    "env",
-			expected: PasswordSourceEnv,
-			wantErr:  false,
-		},
-		{
-			name:     "stdin",
-			input:    "stdin",
-			expected: PasswordSourceStdin,
-			wantErr:  false,
-		},
-		{
-			name:     "tui",
-			input:    "tui",
-			expected: PasswordSourceTUI,
-			wantErr:  false,
-		},
-		{
-			name:     "uppercase ENV",
-			input:    "ENV",
-			expected: PasswordSourceEnv,
-			wantErr:  false,
-		},
-		{
-			name:     "invalid source",
-			input:    "invalid",
-			expected: PasswordSourceAuto,
-			wantErr:  true,
-		},
+		{"auto", "auto", PasswordSourceAuto, false},
+		{"empty string (defaults to auto)", "", PasswordSourceAuto, false},
+		{"env", "env", PasswordSourceEnv, false},
+		{"stdin", "stdin", PasswordSourceStdin, false},
+		{"tui", "tui", PasswordSourceTUI, false},
+		{"uppercase ENV", "ENV", PasswordSourceEnv, false},
+		{"invalid source", "invalid", PasswordSourceAuto, true},
 	}
 
 	for _, tt := range tests {
@@ -72,13 +39,12 @@ func TestParsePasswordSource(t *testing.T) {
 }
 
 func TestGetPasswordFromEnv(t *testing.T) {
-	// Save and restore original env
-	origEnv := os.Getenv(EnvSigningPassword)
+	origEnv := os.Getenv(signingpkg.EnvSigningPassword)
 	defer func() {
 		if origEnv != "" {
-			os.Setenv(EnvSigningPassword, origEnv)
+			os.Setenv(signingpkg.EnvSigningPassword, origEnv)
 		} else {
-			os.Unsetenv(EnvSigningPassword)
+			os.Unsetenv(signingpkg.EnvSigningPassword)
 		}
 	}()
 
@@ -87,24 +53,16 @@ func TestGetPasswordFromEnv(t *testing.T) {
 		envVal  string
 		wantErr bool
 	}{
-		{
-			name:    "valid password in env",
-			envVal:  "test-password-123",
-			wantErr: false,
-		},
-		{
-			name:    "empty env variable",
-			envVal:  "",
-			wantErr: true,
-		},
+		{"valid password in env", "test-password-123", false},
+		{"empty env variable", "", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.envVal != "" {
-				os.Setenv(EnvSigningPassword, tt.envVal)
+				os.Setenv(signingpkg.EnvSigningPassword, tt.envVal)
 			} else {
-				os.Unsetenv(EnvSigningPassword)
+				os.Unsetenv(signingpkg.EnvSigningPassword)
 			}
 
 			password, err := getPasswordFromEnv()

@@ -35,7 +35,16 @@ The password can be provided via:
 			fmt.Printf("  %s %s\n", labelStyle.Render("Directory:"), valueStyle.Render(artifactsDir))
 			fmt.Println()
 
-			if err := signing.SignArtifacts(artifactsDir); err != nil {
+			// Acquire password at the CLI layer (interface concern)
+			password, err := GetSigningPassword(
+				PasswordSourceAuto,
+				"Enter password to unlock signing key",
+			)
+			if err != nil {
+				return fmt.Errorf("failed to get password: %w", err)
+			}
+
+			if err := signing.SignArtifacts(artifactsDir, password); err != nil {
 				return fmt.Errorf("failed to sign artifacts: %w", err)
 			}
 

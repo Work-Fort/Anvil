@@ -6,6 +6,7 @@ import (
 
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/signing"
+	"github.com/Work-Fort/Anvil/pkg/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +30,16 @@ func newImportCmd() *cobra.Command {
 			fmt.Printf("  %s %s\n", labelStyle.Render("Backup:"), valueStyle.Render(backupPath))
 			fmt.Println()
 
-			if err := signing.ImportEncryptedBackup(backupPath); err != nil {
+			// Acquire passphrase at the CLI layer (interface concern)
+			passphrase, err := ui.PasswordInput(
+				"Enter passphrase to decrypt backup",
+				"Enter passphrase",
+			)
+			if err != nil {
+				return fmt.Errorf("failed to get passphrase: %w", err)
+			}
+
+			if err := signing.ImportEncryptedBackup(backupPath, passphrase); err != nil {
 				return fmt.Errorf("failed to import from backup: %w", err)
 			}
 

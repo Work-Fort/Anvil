@@ -7,75 +7,49 @@ import (
 	"path/filepath"
 
 	"github.com/Work-Fort/Anvil/pkg/config"
-	"github.com/Work-Fort/Anvil/pkg/ui"
 )
 
-// MigrateUnencryptedKey migrates an unencrypted private key to encrypted format
-// This is a one-time migration for existing keys
-func MigrateUnencryptedKey() error {
+// MigrateUnencryptedKey migrates an unencrypted private key to encrypted format.
+// The caller must provide the password; this function never prompts.
+// Returns (migrated bool, err error) — migrated is false if no migration was needed.
+func MigrateUnencryptedKey(password string) (bool, error) {
 	privateKeyPath := filepath.Join(config.GlobalPaths.KeysDir, "signing-key-private.asc")
 
 	// Check if private key exists
 	keyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// No key exists, no migration needed
-			return nil
+			return false, nil
 		}
-		return fmt.Errorf("failed to read private key: %w", err)
+		return false, fmt.Errorf("failed to read private key: %w", err)
 	}
 
 	// Check if already encrypted
 	if IsKeyEncrypted(keyData) {
-		// Already encrypted, no migration needed
-		return nil
+		return false, nil
 	}
 
-	// Key is unencrypted, prompt user to encrypt it
-	fmt.Println()
-	fmt.Println("⚠ Your signing key is currently unencrypted.")
-	fmt.Println()
-	fmt.Println("For security, private keys should be encrypted at rest.")
-	fmt.Println("Would you like to encrypt it now? (Y/n)")
-
-	var response string
-	fmt.Scanln(&response)
-
-	if response != "" && response != "Y" && response != "y" {
-		fmt.Println("Skipping encryption. You can encrypt the key later by rotating it.")
-		return nil
-	}
-
-	// Get password for encryption
-	password, err := ui.PasswordInputConfirm(
-		"Enter password to encrypt signing key",
-		"Confirm password",
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get password: %w", err)
+	if password == "" {
+		return false, fmt.Errorf("password required to encrypt signing key")
 	}
 
 	// Encrypt the key
 	encryptedData, err := EncryptPrivateKey(keyData, password)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt key: %w", err)
+		return false, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
 	// Write encrypted key back to file
 	if err := os.WriteFile(privateKeyPath, encryptedData, 0600); err != nil {
-		return fmt.Errorf("failed to write encrypted key: %w", err)
+		return false, fmt.Errorf("failed to write encrypted key: %w", err)
 	}
 
 	// Update backups if they exist
 	backupsDir := filepath.Join(config.GlobalPaths.KeysDir, "backups")
 	if _, err := os.Stat(backupsDir); err == nil {
-		fmt.Println()
-		fmt.Println("Updating backups with encrypted key...")
-
-		// Find all backup directories
 		entries, err := os.ReadDir(backupsDir)
 		if err != nil {
-			return fmt.Errorf("failed to read backups directory: %w", err)
+			return false, fmt.Errorf("failed to read backups directory: %w", err)
 		}
 
 		for _, entry := range entries {
@@ -89,19 +63,13 @@ func MigrateUnencryptedKey() error {
 				"signing-key-private.asc",
 			)
 
-			// Check if backup has private key
 			if _, err := os.Stat(backupPrivateKeyPath); err == nil {
-				// Encrypt the backup
 				if err := os.WriteFile(backupPrivateKeyPath, encryptedData, 0600); err != nil {
-					return fmt.Errorf("failed to update backup %s: %w", entry.Name(), err)
+					return false, fmt.Errorf("failed to update backup %s: %w", entry.Name(), err)
 				}
 			}
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("✓ Signing key encrypted successfully!")
-	fmt.Println()
-
-	return nil
+	return true, nil
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/ProtonMail/gopenpgp/v3/crypto"
 	"github.com/ProtonMail/gopenpgp/v3/profile"
 	"github.com/Work-Fort/Anvil/pkg/config"
-	"github.com/Work-Fort/Anvil/pkg/ui"
 )
 
 // KeyFormat represents the PGP key file format
@@ -277,12 +276,12 @@ func GenerateKey(opts GenerateKeyOptions) (*KeyInfo, error) {
 
 // SignArtifacts signs the SHA256SUMS file in the given directory
 // Uses ASCII-armored format for release asset compatibility
-func SignArtifacts(artifactsDir string) error {
-	return SignArtifactsWithFormat(artifactsDir, KeyFormatArmored)
+func SignArtifacts(artifactsDir, password string) error {
+	return SignArtifactsWithFormat(artifactsDir, KeyFormatArmored, password)
 }
 
 // SignArtifactsWithFormat signs the SHA256SUMS file with specified format
-func SignArtifactsWithFormat(artifactsDir string, format KeyFormat) error {
+func SignArtifactsWithFormat(artifactsDir string, format KeyFormat, password string) error {
 	// Find SHA256SUMS file
 	sha256sumsPath := filepath.Join(artifactsDir, "SHA256SUMS")
 	data, err := os.ReadFile(sha256sumsPath)
@@ -291,7 +290,7 @@ func SignArtifactsWithFormat(artifactsDir string, format KeyFormat) error {
 	}
 
 	// Load private key
-	key, err := loadPrivateKey()
+	key, err := loadPrivateKey(password)
 	if err != nil {
 		return fmt.Errorf("failed to load private key: %w", err)
 	}
@@ -391,7 +390,7 @@ func VerifyArtifacts(artifactsDir string) error {
 
 // ExportEncryptedBackup exports an encrypted backup of the signing key
 // Uses GPG for compatibility with existing backup workflows
-func ExportEncryptedBackup(email, outputPath string) error {
+func ExportEncryptedBackup(email, outputPath, unlockPassword, backupPassphrase string) error {
 	// Check if output file already exists - MUST fail if it does
 	if _, err := os.Stat(outputPath); err == nil {
 		return fmt.Errorf(
@@ -411,31 +410,22 @@ func ExportEncryptedBackup(email, outputPath string) error {
 
 	// If key is encrypted, decrypt it first
 	if IsKeyEncrypted(keyData) {
-		password, err := GetSigningPassword(
-			PasswordSourceAuto,
-			"Enter password to unlock signing key",
-		)
-		if err != nil {
-			return fmt.Errorf("failed to get password: %w", err)
+		if unlockPassword == "" {
+			return fmt.Errorf("signing key is encrypted but no unlock password provided — set ANVIL_SIGNING_PASSWORD or pass password explicitly")
 		}
 
-		keyData, err = DecryptPrivateKey(keyData, password)
+		keyData, err = DecryptPrivateKey(keyData, unlockPassword)
 		if err != nil {
 			return fmt.Errorf("failed to decrypt key: %w", err)
 		}
 	}
 
-	// Get NEW passphrase for backup encryption
-	passphrase, err := ui.PasswordInputConfirm(
-		"Enter passphrase for backup encryption",
-		"Confirm passphrase",
-	)
-	if err != nil {
-		return fmt.Errorf("failed to read passphrase: %w", err)
+	if backupPassphrase == "" {
+		return fmt.Errorf("backup passphrase is required")
 	}
 
-	// Encrypt with new passphrase
-	encryptedBackup, err := EncryptPrivateKey(keyData, passphrase)
+	// Encrypt with backup passphrase
+	encryptedBackup, err := EncryptPrivateKey(keyData, backupPassphrase)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt backup: %w", err)
 	}
@@ -497,7 +487,7 @@ func ImportKey(keyData []byte) error {
 
 // ImportEncryptedBackup imports a signing key from an encrypted backup
 // Uses GPG for compatibility with existing backup workflows
-func ImportEncryptedBackup(backupPath string) error {
+func ImportEncryptedBackup(backupPath, backupPassphrase string) error {
 	// Check if key already exists
 	if keyExists() {
 		return fmt.Errorf("signing key already exists - use RemoveKey() first")
@@ -508,13 +498,8 @@ func ImportEncryptedBackup(backupPath string) error {
 		return fmt.Errorf("backup file not found: %s", backupPath)
 	}
 
-	// Get passphrase using TUI
-	passphrase, err := ui.PasswordInput(
-		"Enter passphrase to decrypt backup",
-		"Enter passphrase",
-	)
-	if err != nil {
-		return fmt.Errorf("failed to read passphrase: %w", err)
+	if backupPassphrase == "" {
+		return fmt.Errorf("backup passphrase is required")
 	}
 
 	// Create directories
@@ -529,7 +514,7 @@ func ImportEncryptedBackup(backupPath string) error {
 	}
 	defer os.Remove(passphraseFile.Name())
 
-	if _, err := passphraseFile.WriteString(passphrase); err != nil {
+	if _, err := passphraseFile.WriteString(backupPassphrase); err != nil {
 		passphraseFile.Close()
 		return fmt.Errorf("failed to write passphrase: %w", err)
 	}
@@ -551,8 +536,9 @@ func ImportEncryptedBackup(backupPath string) error {
 		return fmt.Errorf("GPG decryption failed (wrong passphrase?): %w\nOutput: %s", err, output)
 	}
 
-	// Load the decrypted key to extract public key
-	key, err := loadPrivateKey()
+	// Load the decrypted key to extract public key.
+	// The file GPG wrote is already decrypted, so pass empty password.
+	key, err := loadPrivateKey("")
 	if err != nil {
 		return fmt.Errorf("failed to load decrypted key: %w", err)
 	}
@@ -720,7 +706,7 @@ func loadKey(path string) (*crypto.Key, error) {
 	return key, nil
 }
 
-func loadPrivateKey() (*crypto.Key, error) {
+func loadPrivateKey(password string) (*crypto.Key, error) {
 	privateKeyPath := filepath.Join(config.GetSigningKeyLocation(), "signing-key-private.asc")
 	keyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
@@ -729,13 +715,8 @@ func loadPrivateKey() (*crypto.Key, error) {
 
 	// Check if encrypted
 	if IsKeyEncrypted(keyData) {
-		// Get password using auto-detection (ENV → TUI)
-		password, err := GetSigningPassword(
-			PasswordSourceAuto,
-			"Enter password to unlock signing key",
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get password: %w", err)
+		if password == "" {
+			return nil, fmt.Errorf("signing key is encrypted but no password provided — set ANVIL_SIGNING_PASSWORD or pass password explicitly")
 		}
 
 		// Decrypt

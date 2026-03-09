@@ -6,6 +6,7 @@ import (
 
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/signing"
+	"github.com/Work-Fort/Anvil/pkg/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +45,25 @@ The backup file will NOT overwrite existing files.`,
 				return fmt.Errorf("no signing key found")
 			}
 
-			if err := signing.ExportEncryptedBackup(keys[0].Email, outputPath); err != nil {
+			// Acquire unlock password at the CLI layer (interface concern)
+			unlockPassword, err := GetSigningPassword(
+				PasswordSourceAuto,
+				"Enter password to unlock signing key",
+			)
+			if err != nil {
+				return fmt.Errorf("failed to get unlock password: %w", err)
+			}
+
+			// Acquire backup passphrase via TUI confirmation (interface concern)
+			backupPassphrase, err := ui.PasswordInputConfirm(
+				"Enter passphrase for backup encryption",
+				"Confirm passphrase",
+			)
+			if err != nil {
+				return fmt.Errorf("failed to get backup passphrase: %w", err)
+			}
+
+			if err := signing.ExportEncryptedBackup(keys[0].Email, outputPath, unlockPassword, backupPassphrase); err != nil {
 				return fmt.Errorf("failed to export backup: %w", err)
 			}
 

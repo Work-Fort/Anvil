@@ -3,6 +3,7 @@ package mcp
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/Work-Fort/Anvil/pkg/signing"
@@ -57,11 +58,13 @@ func registerSigningTools(s *server.MCPServer) {
 		gomcp.WithDescription("Export encrypted key backup. CLI: anvil signing export"),
 		gomcp.WithString("email", gomcp.Required(), gomcp.Description("Email of the key to export")),
 		gomcp.WithString("output_path", gomcp.Required(), gomcp.Description("Output file path for encrypted backup")),
+		gomcp.WithString("passphrase", gomcp.Required(), gomcp.Description("Passphrase for backup encryption")),
 	), handleSigningExportBackup)
 
 	s.AddTool(gomcp.NewTool("signing_import",
 		gomcp.WithDescription("Import key from encrypted backup. CLI: anvil signing import"),
 		gomcp.WithString("backup_path", gomcp.Required(), gomcp.Description("Path to encrypted backup file")),
+		gomcp.WithString("passphrase", gomcp.Required(), gomcp.Description("Passphrase to decrypt the backup")),
 	), handleSigningImportBackup)
 }
 
@@ -221,7 +224,9 @@ func handleSigningSign(_ context.Context, req gomcp.CallToolRequest) (*gomcp.Cal
 		return errResult(err)
 	}
 
-	if err := signing.SignArtifacts(path); err != nil {
+	password := os.Getenv("ANVIL_SIGNING_PASSWORD")
+
+	if err := signing.SignArtifacts(path, password); err != nil {
 		return errResult(err)
 	}
 
@@ -260,8 +265,14 @@ func handleSigningExportBackup(_ context.Context, req gomcp.CallToolRequest) (*g
 	if err != nil {
 		return errResult(err)
 	}
+	passphrase, err := req.RequireString("passphrase")
+	if err != nil {
+		return errResult(err)
+	}
 
-	if err := signing.ExportEncryptedBackup(email, outputPath); err != nil {
+	unlockPassword := os.Getenv("ANVIL_SIGNING_PASSWORD")
+
+	if err := signing.ExportEncryptedBackup(email, outputPath, unlockPassword, passphrase); err != nil {
 		return errResult(err)
 	}
 
@@ -276,8 +287,12 @@ func handleSigningImportBackup(_ context.Context, req gomcp.CallToolRequest) (*g
 	if err != nil {
 		return errResult(err)
 	}
+	passphrase, err := req.RequireString("passphrase")
+	if err != nil {
+		return errResult(err)
+	}
 
-	if err := signing.ImportEncryptedBackup(backupPath); err != nil {
+	if err := signing.ImportEncryptedBackup(backupPath, passphrase); err != nil {
 		return errResult(err)
 	}
 
