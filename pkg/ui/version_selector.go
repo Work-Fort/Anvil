@@ -32,15 +32,15 @@ const (
 )
 
 type VersionItem struct {
-	version   string
-	isDefault bool
+	version      string
+	isDefault    bool
+	successColor color.Color
 }
 
 func (v VersionItem) FilterValue() string { return v.version }
 func (v VersionItem) Title() string {
 	if v.isDefault {
-		theme := config.CurrentTheme
-		markerStyle := lipgloss.NewStyle().Foreground(theme.GetSuccessColor())
+		markerStyle := lipgloss.NewStyle().Foreground(v.successColor)
 		return markerStyle.Render("●") + " " + v.version + " (default)"
 	}
 	return "  " + v.version
@@ -49,7 +49,8 @@ func (v VersionItem) Description() string { return "" }
 
 // customDelegate is a list item delegate that renders without cursor indicators
 type customDelegate struct {
-	accentColor color.Color
+	accentColor  color.Color
+	successColor color.Color
 }
 
 func (d customDelegate) Height() int  { return 1 }
@@ -66,8 +67,7 @@ func (d customDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 
 	var displayText string
 	if versionItem.isDefault {
-		theme := config.CurrentTheme
-		markerStyle := lipgloss.NewStyle().Foreground(theme.GetSuccessColor())
+		markerStyle := lipgloss.NewStyle().Foreground(d.successColor)
 		displayText = markerStyle.Render("●") + " " + versionItem.version + " (default)"
 	} else {
 		displayText = "  " + versionItem.version
@@ -85,6 +85,7 @@ func (d customDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 }
 
 type VersionSelectorModel struct {
+	theme           config.Theme
 	target          string // "kernel" or "firecracker"
 	downloadedList  list.Model
 	availableList   list.Model
@@ -124,22 +125,23 @@ type StatusUpdateMsg struct {
 	status_chan chan string
 }
 
-func NewVersionSelector(target string, downloaded, available []string, downloadFn func(string, func(float64), func(string)) error, setDefaultFn, deleteFn func(string) error, reloadFn func() ([]string, []string, error), getDefaultVerFn func() string) VersionSelectorModel {
-	theme := config.CurrentTheme
+func NewVersionSelector(theme config.Theme, target string, downloaded, available []string, downloadFn func(string, func(float64), func(string)) error, setDefaultFn, deleteFn func(string) error, reloadFn func() ([]string, []string, error), getDefaultVerFn func() string) VersionSelectorModel {
 	primaryColor := theme.GetPrimaryColor()
 	secondaryColor := theme.GetSecondaryColor()
+	successColor := theme.GetSuccessColor()
 
 	defaultVer := getDefaultVerFn()
 
 	downloadedItems := make([]list.Item, len(downloaded))
 	for i, v := range downloaded {
 		downloadedItems[i] = VersionItem{
-			version:   v,
-			isDefault: v == defaultVer,
+			version:      v,
+			isDefault:    v == defaultVer,
+			successColor: successColor,
 		}
 	}
 
-	downloadedDelegate := customDelegate{accentColor: primaryColor}
+	downloadedDelegate := customDelegate{accentColor: primaryColor, successColor: successColor}
 
 	downloadedList := list.New(downloadedItems, downloadedDelegate, 0, 0)
 	downloadedList.Title = ""
@@ -152,12 +154,13 @@ func NewVersionSelector(target string, downloaded, available []string, downloadF
 	availableItems := make([]list.Item, len(available))
 	for i, v := range available {
 		availableItems[i] = VersionItem{
-			version:   v,
-			isDefault: false,
+			version:      v,
+			isDefault:    false,
+			successColor: successColor,
 		}
 	}
 
-	availableDelegate := customDelegate{accentColor: secondaryColor}
+	availableDelegate := customDelegate{accentColor: secondaryColor, successColor: successColor}
 
 	availableList := list.New(availableItems, availableDelegate, 0, 0)
 	availableList.Title = ""
@@ -179,6 +182,7 @@ func NewVersionSelector(target string, downloaded, available []string, downloadF
 	}
 
 	return VersionSelectorModel{
+		theme:            theme,
 		target:           target,
 		downloadedList:   downloadedList,
 		availableList:    availableList,
@@ -343,11 +347,14 @@ func (m VersionSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		defaultVer := m.getDefaultVerFn()
 
+		successColor := m.theme.GetSuccessColor()
+
 		downloadedItems := make([]list.Item, len(downloaded))
 		for i, v := range downloaded {
 			downloadedItems[i] = VersionItem{
-				version:   v,
-				isDefault: v == defaultVer,
+				version:      v,
+				isDefault:    v == defaultVer,
+				successColor: successColor,
 			}
 		}
 		m.downloadedList.SetItems(downloadedItems)
@@ -355,8 +362,9 @@ func (m VersionSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		availableItems := make([]list.Item, len(available))
 		for i, v := range available {
 			availableItems[i] = VersionItem{
-				version:   v,
-				isDefault: false,
+				version:      v,
+				isDefault:    false,
+				successColor: successColor,
 			}
 		}
 		m.availableList.SetItems(availableItems)
@@ -548,7 +556,7 @@ func (m VersionSelectorModel) View() tea.View {
 		return tea.NewView("Loading...")
 	}
 
-	theme := config.CurrentTheme
+	theme := m.theme
 
 	var targetDisplay string
 	if m.target == "firecracker" {
@@ -569,7 +577,7 @@ func (m VersionSelectorModel) View() tea.View {
 	tabsRow := RenderTabs(m.tabs, TabsConfig{
 		ActiveIndex: m.activeTabIndex,
 		Width:       m.width,
-	}, config.CurrentTheme)
+	}, theme)
 
 	var tabContent string
 	var tabKeys KeyBindingSet
@@ -585,7 +593,7 @@ func (m VersionSelectorModel) View() tea.View {
 	tabHelp := tabKeys.RenderInline(helpStyle)
 	contentWithHelp := lipgloss.JoinVertical(lipgloss.Left, tabContent, "", tabHelp)
 
-	contentPane := RenderTabContent(contentWithHelp, m.width, 0, config.CurrentTheme)
+	contentPane := RenderTabContent(contentWithHelp, m.width, 0, theme)
 
 	help := theme.RenderFooter(m.width, m.globalKeys.Render(lipgloss.NewStyle()))
 
@@ -690,6 +698,7 @@ func (m VersionSelectorModel) renderProgressModal(accentColor, mutedColor color.
 
 // RunVersionSelector runs the version selector with the provided callbacks
 func RunVersionSelector(
+	theme config.Theme,
 	target string,
 	downloaded, available []string,
 	downloadFn func(string, func(float64), func(string)) error,
@@ -697,7 +706,7 @@ func RunVersionSelector(
 	reloadFn func() ([]string, []string, error),
 	getDefaultVerFn func() string,
 ) error {
-	model := NewVersionSelector(target, downloaded, available, downloadFn, setDefaultFn, deleteFn, reloadFn, getDefaultVerFn)
+	model := NewVersionSelector(theme, target, downloaded, available, downloadFn, setDefaultFn, deleteFn, reloadFn, getDefaultVerFn)
 	p := tea.NewProgram(model)
 
 	_, err := p.Run()

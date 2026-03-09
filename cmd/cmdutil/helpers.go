@@ -254,5 +254,5 @@ func ShowVersionSelector(target string) error {
 	}
 
 	// Run the interactive selector
-	return ui.RunVersionSelector(target, downloadedVersions, availableVersions, downloadFn, setDefaultFn, deleteFn, fetchVersions, getDefaultVerFn)
+	return ui.RunVersionSelector(config.CurrentTheme, target, downloadedVersions, availableVersions, downloadFn, setDefaultFn, deleteFn, fetchVersions, getDefaultVerFn)
 }
