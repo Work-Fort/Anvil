@@ -1,22 +1,20 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-#MISE description="Install anvil to ~/.local/share/anvil/bin"
+#MISE description="Install anvil to ~/.local/bin"
 #MISE depends=["build"]
 set -euo pipefail
 
 BUILD_DIR=build
 BINARY_NAME=anvil
 
-XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-INSTALL_DIR="$XDG_DATA_HOME/anvil/bin"
+INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 cp "$BUILD_DIR/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
 chmod +x "$INSTALL_DIR/$BINARY_NAME"
 echo "✓ Installed to $INSTALL_DIR/$BINARY_NAME"
-echo ""
-if echo "$PATH" | grep -q "$INSTALL_DIR"; then
-  echo "✓ $INSTALL_DIR is on your PATH"
-else
+
+if ! echo "$PATH" | grep -q "$INSTALL_DIR"; then
+  echo ""
   echo "Add to your PATH:"
   echo "  export PATH=\"\$PATH:$INSTALL_DIR\""
 fi
