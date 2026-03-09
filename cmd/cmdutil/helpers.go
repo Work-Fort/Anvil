@@ -144,7 +144,7 @@ func GetDefaultVersion(target string) string {
 func ShowVersionSelector(target string) error {
 	// Helper function to fetch and categorize versions
 	fetchVersions := func() ([]string, []string, error) {
-		client := github.NewClient()
+		client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 		var releases []github.Release
 		var err error
 

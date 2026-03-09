@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/download"
 	"github.com/hashicorp/go-version"
 )
@@ -28,31 +27,33 @@ type Asset struct {
 
 // Client handles GitHub API requests
 type Client struct {
-	token string
+	token  string
+	apiURL string
 }
 
-// NewClient creates a new GitHub API client
-func NewClient() *Client {
+// NewClient creates a GitHub API client with the given token and API URL.
+func NewClient(token, apiURL string) *Client {
 	return &Client{
-		token: config.GetGitHubToken(),
+		token:  token,
+		apiURL: apiURL,
 	}
 }
 
 // GetLatestRelease fetches the latest release for a repository
 func (c *Client) GetLatestRelease(owner, repo string) (*Release, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", config.GitHubAPI, owner, repo)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", c.apiURL, owner, repo)
 	return c.getRelease(url)
 }
 
 // GetReleaseByTag fetches a specific release by tag
 func (c *Client) GetReleaseByTag(owner, repo, tag string) (*Release, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", config.GitHubAPI, owner, repo, tag)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", c.apiURL, owner, repo, tag)
 	return c.getRelease(url)
 }
 
 // GetReleases fetches multiple releases for a repository
 func (c *Client) GetReleases(owner, repo string, perPage int) ([]Release, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=%d", config.GitHubAPI, owner, repo, perPage)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=%d", c.apiURL, owner, repo, perPage)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

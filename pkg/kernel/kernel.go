@@ -68,7 +68,7 @@ func DownloadWithProgress(version string, paths *config.Paths, progressCallback 
 	}
 
 	// Create GitHub client for API and downloads
-	client := github.NewClient()
+	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 
 	// If no version specified, get latest
 	if version == "" {
@@ -354,7 +354,7 @@ func Set(version string, paths *config.Paths) error {
 func ShowVersions(paths *config.Paths) ([]AvailableVersion, error) {
 	log.Debug("Fetching available kernel versions from GitHub")
 
-	client := github.NewClient()
+	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 	parts := strings.Split(config.GitHubRepo, "/")
 	releases, err := client.GetReleases(parts[0], parts[1], 10)
 	if err != nil {

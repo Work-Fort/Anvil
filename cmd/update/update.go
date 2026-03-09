@@ -66,7 +66,7 @@ func updateSelf(version, disableUpdate string) error {
 	log.Info("Checking for anvil updates...")
 
 	// Get latest CLI release (tagged with cli-v prefix)
-	client := github.NewClient()
+	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 	parts := strings.Split(config.GitHubRepo, "/")
 
 	// Fetch recent releases and find the latest CLI release
