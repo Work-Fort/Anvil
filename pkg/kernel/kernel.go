@@ -14,6 +14,20 @@ import (
 	"github.com/charmbracelet/log"
 )
 
+// KernelInfo describes an installed kernel version
+type KernelInfo struct {
+	Version   string   `json:"version"`
+	IsDefault bool     `json:"is_default"`
+	Files     []string `json:"files"`
+}
+
+// AvailableVersion describes a kernel version available for download
+type AvailableVersion struct {
+	Version     string `json:"version"`
+	IsInstalled bool   `json:"is_installed"`
+	IsDefault   bool   `json:"is_default"`
+}
+
 // Get gets a kernel by trying to download pre-built version first, then building from source if needed
 func Get(version string, buildOpts *BuildOptions) error {
 	// Try to download pre-built kernel first
@@ -258,30 +272,22 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
-// List lists installed kernel versions
-func List() error {
-	theme := config.CurrentTheme
-	titleStyle := theme.InfoStyle().Bold(true)
-	markerStyle := theme.SuccessStyle()
-	versionStyle := theme.InfoStyle()
-	subtleStyle := theme.SubtleStyle()
-
+// List returns installed kernel versions with their metadata.
+func List(paths *config.Paths) ([]KernelInfo, string, error) {
 	arch, err := config.GetArch()
 	if err != nil {
-		return err
+		return nil, "", fmt.Errorf("failed to get architecture: %w", err)
 	}
 
 	kernelName, err := config.GetKernelName()
 	if err != nil {
-		return err
+		return nil, "", fmt.Errorf("failed to get kernel name: %w", err)
 	}
 
-	symlinkPath := filepath.Join(config.GlobalPaths.DataDir, kernelName)
+	// Determine default version from symlink
 	defaultVersion := ""
-
-	// Check if there's a default version set
-	if target, err := os.Readlink(symlinkPath); err == nil {
-		// Extract version from path like: /path/to/kernels/6.18.9/vmlinux-6.18.9-x86_64
+	kernelSymlink := filepath.Join(paths.DataDir, kernelName)
+	if target, err := os.Readlink(kernelSymlink); err == nil {
 		parts := strings.Split(target, "/")
 		for i, part := range parts {
 			if part == "kernels" && i+1 < len(parts) {
@@ -291,53 +297,37 @@ func List() error {
 		}
 	}
 
-	fmt.Println()
-	fmt.Printf("%s %s\n", titleStyle.Render("Installed kernels"), subtleStyle.Render(fmt.Sprintf("(%s)", arch)))
-	fmt.Println()
-
-	entries, err := os.ReadDir(config.GlobalPaths.KernelsDir)
-	if err != nil || len(entries) == 0 {
-		fmt.Println(subtleStyle.Render("  No kernels installed"))
-		fmt.Println()
-		fmt.Println(subtleStyle.Render("Download a kernel with:"))
-		fmt.Println(subtleStyle.Render("  anvil download kernel <version>"))
-		return nil
+	entries, err := os.ReadDir(paths.KernelsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, arch, nil
+		}
+		return nil, arch, fmt.Errorf("failed to read kernels directory: %w", err)
 	}
 
-	found := false
+	var kernels []KernelInfo
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
-
 		version := entry.Name()
-		kernelFile := filepath.Join(config.GlobalPaths.KernelsDir, version, fmt.Sprintf("%s-%s-%s", kernelName, version, arch))
+		ki := KernelInfo{
+			Version:   version,
+			IsDefault: version == defaultVersion,
+		}
 
-		if _, err := os.Stat(kernelFile); err == nil {
-			found = true
-			if version == defaultVersion {
-				fmt.Printf("  %s %s %s\n",
-					markerStyle.Render("●"),
-					versionStyle.Render(version),
-					subtleStyle.Render("(default)"))
-			} else {
-				fmt.Printf("    %s\n", versionStyle.Render(version))
+		// List files in version directory
+		versionDir := filepath.Join(paths.KernelsDir, version)
+		files, err := os.ReadDir(versionDir)
+		if err == nil {
+			for _, f := range files {
+				ki.Files = append(ki.Files, f.Name())
 			}
 		}
+		kernels = append(kernels, ki)
 	}
 
-	if !found {
-		fmt.Println(subtleStyle.Render(fmt.Sprintf("  No kernels installed for %s", arch)))
-		fmt.Println()
-		fmt.Println(subtleStyle.Render("Download a kernel with:"))
-		fmt.Println(subtleStyle.Render("  anvil download kernel <version>"))
-	}
-
-	fmt.Println()
-	fmt.Println(subtleStyle.Render("Set default with:"))
-	fmt.Println(subtleStyle.Render("  anvil set kernel <version>"))
-
-	return nil
+	return kernels, arch, nil
 }
 
 // Set sets a kernel version as default by creating a symlink

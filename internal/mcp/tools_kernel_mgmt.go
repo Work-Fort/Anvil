@@ -49,57 +49,31 @@ func registerKernelMgmtTools(s *server.MCPServer) {
 func handleKernelList(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 	archFilter := req.GetString("arch", "")
 
-	kernelsDir := config.GlobalPaths.KernelsDir
-	entries, err := os.ReadDir(kernelsDir)
+	kernels, _, err := kernel.List(config.GlobalPaths)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return jsonResult(map[string]any{"kernels": []any{}, "count": 0})
-		}
 		return errResult(err)
 	}
 
-	// Determine default kernel version from the data dir symlink (matches CLI behavior)
-	defaultTarget := ""
-	kernelName, err := config.GetKernelName()
-	if err == nil {
-		kernelSymlink := filepath.Join(config.GlobalPaths.DataDir, kernelName)
-		if target, linkErr := os.Readlink(kernelSymlink); linkErr == nil {
-			parts := strings.Split(target, "/")
-			for i, part := range parts {
-				if part == "kernels" && i+1 < len(parts) {
-					defaultTarget = parts[i+1]
-					break
-				}
-			}
-		}
-	}
-
-	var kernels []map[string]any
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == "default" {
+	var result []map[string]any
+	for _, ki := range kernels {
+		if archFilter != "" && !strings.Contains(ki.Version, archFilter) {
 			continue
 		}
-
-		name := entry.Name()
-		if archFilter != "" && !strings.Contains(name, archFilter) {
-			continue
-		}
-
-		isDefault := name == defaultTarget
-		kernels = append(kernels, map[string]any{
-			"version":    name,
-			"is_default": isDefault,
-			"path":       filepath.Join(kernelsDir, name),
+		result = append(result, map[string]any{
+			"version":    ki.Version,
+			"is_default": ki.IsDefault,
+			"files":      ki.Files,
+			"path":       filepath.Join(config.GlobalPaths.KernelsDir, ki.Version),
 		})
 	}
 
-	if kernels == nil {
-		kernels = []map[string]any{}
+	if result == nil {
+		result = []map[string]any{}
 	}
 
 	return jsonResult(map[string]any{
-		"kernels": kernels,
-		"count":   len(kernels),
+		"kernels": result,
+		"count":   len(result),
 	})
 }
 
@@ -109,44 +83,23 @@ func handleKernelGet(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallT
 		return errResult(err)
 	}
 
-	kernelDir := filepath.Join(config.GlobalPaths.KernelsDir, version)
-	if _, err := os.Stat(kernelDir); err != nil {
-		return errResult(fmt.Errorf("kernel version %s not found", version))
-	}
-
-	// List files in the kernel directory
-	entries, err := os.ReadDir(kernelDir)
+	kernels, _, err := kernel.List(config.GlobalPaths)
 	if err != nil {
 		return errResult(err)
 	}
 
-	var files []string
-	for _, e := range entries {
-		files = append(files, e.Name())
-	}
-
-	// Determine if this is the default kernel (resolve via data dir symlink, matches CLI)
-	isDefault := false
-	kernelName, nameErr := config.GetKernelName()
-	if nameErr == nil {
-		kernelSymlink := filepath.Join(config.GlobalPaths.DataDir, kernelName)
-		if target, linkErr := os.Readlink(kernelSymlink); linkErr == nil {
-			parts := strings.Split(target, "/")
-			for i, part := range parts {
-				if part == "kernels" && i+1 < len(parts) {
-					isDefault = parts[i+1] == version
-					break
-				}
-			}
+	for _, ki := range kernels {
+		if ki.Version == version {
+			return jsonResult(map[string]any{
+				"version":    ki.Version,
+				"path":       filepath.Join(config.GlobalPaths.KernelsDir, ki.Version),
+				"files":      ki.Files,
+				"is_default": ki.IsDefault,
+			})
 		}
 	}
 
-	return jsonResult(map[string]any{
-		"version":    version,
-		"path":       kernelDir,
-		"files":      files,
-		"is_default": isDefault,
-	})
+	return errResult(fmt.Errorf("kernel version %s not found", version))
 }
 
 func handleKernelSetDefault(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
