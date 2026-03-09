@@ -35,8 +35,7 @@ type TabsConfig struct {
 }
 
 // RenderTabs renders a set of tabs with the cyberpunk aesthetic
-func RenderTabs(tabs []Tab, cfg TabsConfig) string {
-	theme := config.CurrentTheme
+func RenderTabs(tabs []Tab, cfg TabsConfig, theme config.Theme) string {
 
 	// Tab border style with bottom connection
 	inactiveTabBorder := tabBorderWithBottom("┴", "─", "┴")
@@ -174,8 +173,7 @@ func RenderTabs(tabs []Tab, cfg TabsConfig) string {
 
 // RenderTabContent renders the content pane for the active tab.
 // width is the desired total rendered width (borders are included inside this value in lipgloss v2).
-func RenderTabContent(content string, width, height int) string {
-	theme := config.CurrentTheme
+func RenderTabContent(content string, width, height int, theme config.Theme) string {
 
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).

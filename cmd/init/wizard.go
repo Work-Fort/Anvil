@@ -140,7 +140,7 @@ func (m WizardModel) View() tea.View {
 		ActiveIndex: m.activeTab,
 		Width:       m.width,
 	}
-	tabsView := ui.RenderTabs(m.tabs, tabsCfg)
+	tabsView := ui.RenderTabs(m.tabs, tabsCfg, config.CurrentTheme)
 
 	contentHeight := m.height - 4
 	var activeContent string
@@ -155,6 +155,7 @@ func (m WizardModel) View() tea.View {
 		activeContent,
 		m.width,
 		contentHeight,
+		config.CurrentTheme,
 	)
 
 	v := tea.NewView(lipgloss.JoinVertical(

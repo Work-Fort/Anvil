@@ -569,7 +569,7 @@ func (m VersionSelectorModel) View() tea.View {
 	tabsRow := RenderTabs(m.tabs, TabsConfig{
 		ActiveIndex: m.activeTabIndex,
 		Width:       m.width,
-	})
+	}, config.CurrentTheme)
 
 	var tabContent string
 	var tabKeys KeyBindingSet
@@ -585,7 +585,7 @@ func (m VersionSelectorModel) View() tea.View {
 	tabHelp := tabKeys.RenderInline(helpStyle)
 	contentWithHelp := lipgloss.JoinVertical(lipgloss.Left, tabContent, "", tabHelp)
 
-	contentPane := RenderTabContent(contentWithHelp, m.width, 0)
+	contentPane := RenderTabContent(contentWithHelp, m.width, 0, config.CurrentTheme)
 
 	help := theme.RenderFooter(m.width, m.globalKeys.Render(lipgloss.NewStyle()))
 

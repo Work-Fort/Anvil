@@ -1083,14 +1083,14 @@ func (m *BuildKernelWizard) View() tea.View {
 	)
 	contentHeight := m.height - headerLines - tabLines - helpLines - blankLines - borderLines
 	// In lipgloss v2, Width() sets total rendered width (borders are inside)
-	contentPane := RenderTabContent(content, m.width, contentHeight)
+	contentPane := RenderTabContent(content, m.width, contentHeight, config.CurrentTheme)
 	actualContentWidth := lipgloss.Width(contentPane)
 
 	// Render tabs to match content pane's actual rendered width
 	tabsRow := RenderTabs(m.tabs, TabsConfig{
 		ActiveIndex: int(m.activePhase),
 		Width:       actualContentWidth,
-	})
+	}, config.CurrentTheme)
 
 	// Help footer using theme helper
 	var helpContent string
