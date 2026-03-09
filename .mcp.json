@@ -1,9 +1,8 @@
 {
   "mcpServers": {
     "anvil": {
-      "command": "go",
-      "args": ["run", ".", "mcp-server"],
-      "env": {}
+      "command": "build/anvil",
+      "args": ["mcp-server"]
     }
   }
 }
