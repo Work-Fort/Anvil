@@ -1032,7 +1032,7 @@ func buildKernelImage(logger *buildLogger, opts BuildOptions, kernelSrcDir, kern
 
 	// ARM64 kernels >= 6.11 need make prepare to generate syscall headers (unistd_64.h)
 	if opts.Arch == "aarch64" {
-		prepCmd := exec.Command("make", "prepare", "ARCH=arm64")
+		prepCmd := exec.Command("make", "prepare", "ARCH=arm64", "CROSS_COMPILE=aarch64-linux-gnu-")
 		prepCmd.Dir = kernelSrcDir
 		prepCmd.Stdout = logger.writer
 		prepCmd.Stderr = logger.writer
@@ -1050,7 +1050,7 @@ func buildKernelImage(logger *buildLogger, opts BuildOptions, kernelSrcDir, kern
 	if opts.Arch == "x86_64" {
 		cmd = exec.Command("make", fmt.Sprintf("-j%d", numCPU), "vmlinux")
 	} else {
-		cmd = exec.Command("make", fmt.Sprintf("-j%d", numCPU), "Image", "ARCH=arm64")
+		cmd = exec.Command("make", fmt.Sprintf("-j%d", numCPU), "Image", "ARCH=arm64", "CROSS_COMPILE=aarch64-linux-gnu-")
 	}
 	cmd.Dir = kernelSrcDir
 	// Route output through logger's writer (pipes to TUI properly)

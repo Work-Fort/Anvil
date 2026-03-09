@@ -234,6 +234,42 @@ func ExtractTarGz(src, dstDir string) error {
 			}
 			outFile.Close()
 
+		case tar.TypeSymlink:
+			// Create parent directory if needed
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return fmt.Errorf("failed to create parent directory: %w", err)
+			}
+
+			// Security check: resolve symlink target and verify it stays within dstDir
+			resolvedLink := filepath.Join(filepath.Dir(target), header.Linkname)
+			cleanResolved := filepath.Clean(resolvedLink)
+			if !strings.HasPrefix(cleanResolved+string(filepath.Separator), cleanDstDir) && cleanResolved != filepath.Clean(dstDir) {
+				return fmt.Errorf("symlink target escapes extraction directory: %s -> %s", header.Name, header.Linkname)
+			}
+
+			// Remove existing file/symlink if present
+			os.Remove(target)
+			if err := os.Symlink(header.Linkname, target); err != nil {
+				return fmt.Errorf("failed to create symlink: %w", err)
+			}
+
+		case tar.TypeLink:
+			// Create parent directory if needed
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return fmt.Errorf("failed to create parent directory: %w", err)
+			}
+
+			// Resolve hardlink target
+			linkTarget := filepath.Join(dstDir, header.Linkname)
+			cleanLink := filepath.Clean(linkTarget)
+			if !strings.HasPrefix(cleanLink+string(filepath.Separator), cleanDstDir) && cleanLink != filepath.Clean(dstDir) {
+				return fmt.Errorf("hardlink target escapes extraction directory: %s -> %s", header.Name, header.Linkname)
+			}
+
+			if err := os.Link(linkTarget, target); err != nil {
+				return fmt.Errorf("failed to create hardlink: %w", err)
+			}
+
 		default:
 			log.Debugf("Skipping unsupported file type: %s (%c)", header.Name, header.Typeflag)
 		}
@@ -332,6 +368,42 @@ func ExtractTarXzWithProgress(src, dstDir string, progressCallback func(float64)
 				return fmt.Errorf("failed to extract file: %w", err)
 			}
 			outFile.Close()
+
+		case tar.TypeSymlink:
+			// Create parent directory if needed
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return fmt.Errorf("failed to create parent directory: %w", err)
+			}
+
+			// Security check: resolve symlink target and verify it stays within dstDir
+			resolvedLink := filepath.Join(filepath.Dir(target), header.Linkname)
+			cleanResolved := filepath.Clean(resolvedLink)
+			if !strings.HasPrefix(cleanResolved+string(filepath.Separator), cleanDstDir) && cleanResolved != filepath.Clean(dstDir) {
+				return fmt.Errorf("symlink target escapes extraction directory: %s -> %s", header.Name, header.Linkname)
+			}
+
+			// Remove existing file/symlink if present
+			os.Remove(target)
+			if err := os.Symlink(header.Linkname, target); err != nil {
+				return fmt.Errorf("failed to create symlink: %w", err)
+			}
+
+		case tar.TypeLink:
+			// Create parent directory if needed
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return fmt.Errorf("failed to create parent directory: %w", err)
+			}
+
+			// Resolve hardlink target
+			linkTarget := filepath.Join(dstDir, header.Linkname)
+			cleanLink := filepath.Clean(linkTarget)
+			if !strings.HasPrefix(cleanLink+string(filepath.Separator), cleanDstDir) && cleanLink != filepath.Clean(dstDir) {
+				return fmt.Errorf("hardlink target escapes extraction directory: %s -> %s", header.Name, header.Linkname)
+			}
+
+			if err := os.Link(linkTarget, target); err != nil {
+				return fmt.Errorf("failed to create hardlink: %w", err)
+			}
 
 		default:
 			log.Debugf("Skipping unsupported file type: %s (%c)", header.Name, header.Typeflag)
