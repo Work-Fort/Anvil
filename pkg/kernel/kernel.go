@@ -363,22 +363,15 @@ func Set(version string, paths *config.Paths) error {
 	return nil
 }
 
-// ShowVersions shows available kernel versions from GitHub
-func ShowVersions() error {
-	theme := config.CurrentTheme
-	titleStyle := theme.InfoStyle().Bold(true)
-	defaultMarkerStyle := theme.SuccessStyle()
-	installedMarkerStyle := theme.InfoStyle()
-	versionStyle := theme.InfoStyle()
-	subtleStyle := theme.SubtleStyle()
-
+// ShowVersions returns available kernel versions from GitHub with install status.
+func ShowVersions(paths *config.Paths) ([]AvailableVersion, error) {
 	log.Debug("Fetching available kernel versions from GitHub")
 
 	client := github.NewClient()
 	parts := strings.Split(config.GitHubRepo, "/")
 	releases, err := client.GetReleases(parts[0], parts[1], 10)
 	if err != nil {
-		return fmt.Errorf("failed to fetch kernel versions: %w", err)
+		return nil, fmt.Errorf("failed to fetch kernel versions: %w", err)
 	}
 
 	// Sort releases by semantic version (newest first)
@@ -386,62 +379,43 @@ func ShowVersions() error {
 
 	arch, err := config.GetArch()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to get architecture: %w", err)
 	}
 
 	kernelName, err := config.GetKernelName()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to get kernel name: %w", err)
 	}
 
-	symlinkPath := filepath.Join(config.GlobalPaths.DataDir, kernelName)
+	// Determine default version from symlink
 	defaultVersion := ""
-
-	// Check if there's a default version set
+	symlinkPath := filepath.Join(paths.DataDir, kernelName)
 	if target, err := os.Readlink(symlinkPath); err == nil {
-		parts := strings.Split(target, "/")
-		for i, part := range parts {
-			if part == "kernels" && i+1 < len(parts) {
-				defaultVersion = parts[i+1]
+		symParts := strings.Split(target, "/")
+		for i, part := range symParts {
+			if part == "kernels" && i+1 < len(symParts) {
+				defaultVersion = symParts[i+1]
 				break
 			}
 		}
 	}
 
-	fmt.Println()
-	fmt.Printf("%s %s\n", titleStyle.Render("Available kernel versions"), subtleStyle.Render("(latest 10)"))
-	fmt.Println()
-
-	if len(releases) == 0 {
-		fmt.Println(subtleStyle.Render("  No kernel releases available yet"))
-		fmt.Println()
-		fmt.Println(subtleStyle.Render("Kernel releases are built automatically when new versions are released."))
-		fmt.Println(subtleStyle.Render("You can also request a specific version by creating a build request issue."))
-		return nil
-	}
-
+	var versions []AvailableVersion
 	for _, release := range releases {
 		version := github.StripVersionPrefix(release.TagName)
-		kernelFile := filepath.Join(config.GlobalPaths.KernelsDir, version, fmt.Sprintf("%s-%s-%s", kernelName, version, arch))
+		kernelFile := filepath.Join(paths.KernelsDir, version, fmt.Sprintf("%s-%s-%s", kernelName, version, arch))
 
-		if version == defaultVersion {
-			fmt.Printf("  %s %s\n",
-				defaultMarkerStyle.Render("·"),
-				versionStyle.Render(version))
-		} else if _, err := os.Stat(kernelFile); err == nil {
-			fmt.Printf("  %s %s\n",
-				installedMarkerStyle.Render("-"),
-				versionStyle.Render(version))
-		} else {
-			fmt.Printf("    %s\n", versionStyle.Render(version))
+		av := AvailableVersion{
+			Version:   version,
+			IsDefault: version == defaultVersion,
 		}
+
+		if _, err := os.Stat(kernelFile); err == nil {
+			av.IsInstalled = true
+		}
+
+		versions = append(versions, av)
 	}
 
-	fmt.Println()
-	fmt.Println(subtleStyle.Render("Legend: · default  - installed"))
-	fmt.Println()
-	fmt.Println(subtleStyle.Render("Download with:"))
-	fmt.Println(subtleStyle.Render("  anvil download kernel <version>"))
-
-	return nil
+	return versions, nil
 }
