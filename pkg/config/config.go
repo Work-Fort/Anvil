@@ -47,17 +47,21 @@ var (
 )
 
 func init() {
-	GlobalPaths = GetPaths()
+	paths, err := GetPaths()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	GlobalPaths = paths
 }
 
-// GetPaths returns XDG-compliant directory paths
-func GetPaths() *Paths {
+// GetPaths returns XDG-compliant directory paths.
+func GetPaths() (*Paths, error) {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to get home directory for XDG_DATA_HOME: %w", err)
 		}
 		dataHome = filepath.Join(home, ".local", "share")
 	}
@@ -66,8 +70,7 @@ func GetPaths() *Paths {
 	if cacheHome == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to get home directory for XDG_CACHE_HOME: %w", err)
 		}
 		cacheHome = filepath.Join(home, ".cache")
 	}
@@ -76,8 +79,7 @@ func GetPaths() *Paths {
 	if configHome == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to get home directory for XDG_CONFIG_HOME: %w", err)
 		}
 		configHome = filepath.Join(home, ".config")
 	}
@@ -97,7 +99,18 @@ func GetPaths() *Paths {
 		KernelBuildDir: filepath.Join(cacheDir, "build-kernel"),
 		KeysDir:        filepath.Join(dataDir, "keys"),
 		GnupgDir:       filepath.Join(dataDir, "gnupg"),
+	}, nil
+}
+
+// InitPaths initializes GlobalPaths explicitly. Call this instead of relying on init()
+// when you need to reinitialize paths (e.g., after changing mode).
+func InitPaths() error {
+	paths, err := GetPaths()
+	if err != nil {
+		return fmt.Errorf("failed to initialize paths: %w", err)
 	}
+	GlobalPaths = paths
+	return nil
 }
 
 // userModeOverride forces user mode when true, regardless of cwd.
