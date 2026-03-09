@@ -46,7 +46,7 @@ If no version is specified, builds the latest stable kernel.`,
 						return kernel.Build(opts, config.GlobalPaths)
 					},
 					CheckCachedFn: func(v string) (bool, string, error) {
-						return kernel.CheckCachedBuild(v, config.GlobalPaths)
+						return kernel.CheckCachedBuild(v, buildArch, config.GlobalPaths)
 					},
 					ReadStatsFn: func(path string) (kernel.BuildStats, error) {
 						return kernel.ReadBuildStats(path)
@@ -97,7 +97,7 @@ If no version is specified, builds the latest stable kernel.`,
 
 			// Check for cached build in non-interactive mode
 			if !buildForceRebuild {
-				hasCached, _, err := kernel.CheckCachedBuild(version, config.GlobalPaths)
+				hasCached, _, err := kernel.CheckCachedBuild(version, buildArch, config.GlobalPaths)
 				if err != nil {
 					return fmt.Errorf("failed to check for cached build: %w", err)
 				}

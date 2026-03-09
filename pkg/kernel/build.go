@@ -218,7 +218,7 @@ func runBuild(opts BuildOptions, paths *config.Paths, logger *buildLogger, progr
 		logger.Info(fmt.Sprintf("Kernel already exists: %s", kernelPath))
 
 		// Load build stats from cached build and send to callback
-		statsFile := filepath.Join(artifactsDir, "build-stats.json")
+		statsFile := filepath.Join(artifactsDir, BuildStatsFile(opts.Arch))
 		if stats, err := ReadBuildStats(statsFile); err == nil {
 			if opts.StatsCallback != nil {
 				opts.StatsCallback(stats)
@@ -233,7 +233,7 @@ func runBuild(opts BuildOptions, paths *config.Paths, logger *buildLogger, progr
 		logger.Info(fmt.Sprintf("Compressed kernel already exists: %s.xz", kernelPath))
 
 		// Load build stats from cached build and send to callback
-		statsFile := filepath.Join(artifactsDir, "build-stats.json")
+		statsFile := filepath.Join(artifactsDir, BuildStatsFile(opts.Arch))
 		if stats, err := ReadBuildStats(statsFile); err == nil {
 			if opts.StatsCallback != nil {
 				opts.StatsCallback(stats)
@@ -356,8 +356,8 @@ func runBuild(opts BuildOptions, paths *config.Paths, logger *buildLogger, progr
 		packageDuration,
 	)
 
-	// Write build stats to JSON file in artifacts directory
-	statsFile := filepath.Join(artifactsDir, "build-stats.json")
+	// Write build stats to per-arch JSON file in artifacts directory
+	statsFile := filepath.Join(artifactsDir, BuildStatsFile(opts.Arch))
 	if err := writeBuildStats(statsFile, stats); err != nil {
 		logger.Warn(fmt.Sprintf("Failed to write build stats: %v", err))
 	}
@@ -382,6 +382,11 @@ func writeBuildStats(path string, stats BuildStats) error {
 	}
 
 	return nil
+}
+
+// BuildStatsFile returns the per-architecture stats filename for a given arch.
+func BuildStatsFile(arch string) string {
+	return fmt.Sprintf("build-stats-%s.json", arch)
 }
 
 // ReadBuildStats reads build statistics from a JSON file
@@ -419,10 +424,18 @@ func CheckKernelInstalled(stats BuildStats, paths *config.Paths) (bool, string, 
 	return true, versionWithTimestamp, nil
 }
 
-// CheckCachedBuild checks if a completed build exists for the given version
-func CheckCachedBuild(version string, paths *config.Paths) (bool, string, error) {
+// CheckCachedBuild checks if a completed build exists for the given version and arch.
+// If arch is empty, it defaults to the host architecture.
+func CheckCachedBuild(version, arch string, paths *config.Paths) (bool, string, error) {
+	if arch == "" {
+		var err error
+		arch, err = config.GetArch()
+		if err != nil {
+			return false, "", err
+		}
+	}
 	artifactsDir := filepath.Join(paths.KernelBuildDir, "artifacts")
-	statsFile := filepath.Join(artifactsDir, "build-stats.json")
+	statsFile := filepath.Join(artifactsDir, BuildStatsFile(arch))
 
 	// Check if build-stats.json exists
 	if _, err := os.Stat(statsFile); os.IsNotExist(err) {
