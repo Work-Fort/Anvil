@@ -108,8 +108,7 @@ func RenderCenteredModal(content string, width, height int, borderColor color.Co
 }
 
 // RenderProgressModal renders a progress modal with title, status, indicator, and help text
-func RenderProgressModal(title, statusMessage, indicator, helpText string, width, height, modalWidth int) string {
-	theme := config.CurrentTheme
+func RenderProgressModal(title, statusMessage, indicator, helpText string, width, height, modalWidth int, theme config.Theme) string {
 
 	titleStyled := lipgloss.NewStyle().
 		Foreground(theme.GetPrimaryColor()).
@@ -167,6 +166,7 @@ func FillTerminal(content string, width, height int) string {
 
 // ConfirmationForm provides a simple Y/N confirmation prompt for bubbletea v2.
 type ConfirmationForm struct {
+	theme       config.Theme
 	title       string
 	description string
 	affirmative string
@@ -175,8 +175,9 @@ type ConfirmationForm struct {
 
 // NewConfirmationForm creates a new confirmation form with Y/N quick keys.
 // The key parameter is kept for API compatibility but unused in the v2 implementation.
-func NewConfirmationForm(_, title, description, affirmative, negative string) *ConfirmationForm {
+func NewConfirmationForm(theme config.Theme, _, title, description, affirmative, negative string) *ConfirmationForm {
 	return &ConfirmationForm{
+		theme:       theme,
 		title:       title,
 		description: description,
 		affirmative: affirmative,
@@ -205,7 +206,7 @@ func (cf *ConfirmationForm) Update(msg tea.Msg) (bool, bool, tea.Cmd) {
 
 // View renders the confirmation prompt with theme styling.
 func (cf *ConfirmationForm) View() string {
-	theme := config.CurrentTheme
+	theme := cf.theme
 
 	title := theme.PrimaryStyle().Bold(true).Render(cf.title)
 

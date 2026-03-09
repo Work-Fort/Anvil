@@ -500,6 +500,7 @@ func (m VersionSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if item, ok := m.downloadedList.SelectedItem().(VersionItem); ok {
 							m.selectedVersion = item.version
 							m.confirmForm = NewConfirmationForm(
+								m.theme,
 								"confirm",
 								fmt.Sprintf("Delete version %s?", m.selectedVersion),
 								"This action cannot be undone.",

@@ -429,6 +429,7 @@ func (m *BuildKernelWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmingInstall = true
 				// Create confirmation form
 				m.confirmForm = NewConfirmationForm(
+					m.theme,
 					"setAsDefault",
 					"Set as default kernel?",
 					"Install this kernel and optionally set it as the default.",
