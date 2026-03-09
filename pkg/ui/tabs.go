@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 	"github.com/Work-Fort/Anvil/pkg/config"
+	"github.com/charmbracelet/log"
 )
 
 // TabState represents the state of a tab
@@ -139,6 +140,7 @@ func RenderTabs(tabs []Tab, cfg TabsConfig) string {
 
 	// Measure tabs width and add horizontal line to fill remaining width
 	tabsWidth := lipgloss.Width(tabsRow)
+	log.Debugf("RenderTabs: cfg.Width=%d tabsWidth=%d remaining=%d", cfg.Width, tabsWidth, cfg.Width-tabsWidth)
 
 	if cfg.Width > tabsWidth {
 		remainingWidth := cfg.Width - tabsWidth
@@ -162,13 +164,16 @@ func RenderTabs(tabs []Tab, cfg TabsConfig) string {
 		extension := lipgloss.JoinVertical(lipgloss.Left, topLine, middleLine, bottomLine)
 
 		// Join tabs and extension horizontally
-		return lipgloss.JoinHorizontal(lipgloss.Top, tabsRow, extension)
+		result := lipgloss.JoinHorizontal(lipgloss.Top, tabsRow, extension)
+		log.Debugf("RenderTabs: final rendered width=%d", lipgloss.Width(result))
+		return result
 	}
 
 	return tabsRow
 }
 
-// RenderTabContent renders the content pane for the active tab
+// RenderTabContent renders the content pane for the active tab.
+// width is the desired total rendered width (borders are included inside this value in lipgloss v2).
 func RenderTabContent(content string, width, height int) string {
 	theme := config.CurrentTheme
 
@@ -180,7 +185,9 @@ func RenderTabContent(content string, width, height int) string {
 		Height(height).
 		Padding(1, 2)
 
-	return windowStyle.Render(content)
+	rendered := windowStyle.Render(content)
+	log.Debugf("RenderTabContent: width=%d height=%d rendered=%d", width, height, lipgloss.Width(rendered))
+	return rendered
 }
 
 // tabBorderWithBottom creates a custom border with specified bottom characters

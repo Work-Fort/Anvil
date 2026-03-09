@@ -32,7 +32,7 @@ var CurrentTheme = Theme{
 	Muted:     lipgloss.Color("#6a6e95"), // Purple-gray
 	Accent:    lipgloss.Color("#82FB9C"), // Same as primary
 	Text:      lipgloss.Color("#C8CCD4"), // Light gray text
-	TextDim:   lipgloss.Color("#6B7080"), // Dimmed text
+	TextDim:   lipgloss.Color("#8B90A0"), // Dimmed text (readable on dark bg)
 	BgDark:    lipgloss.Color("#1A1C24"), // Dark panel bg
 	Success:   lipgloss.Color("#82FB9C"), // Bright mint green
 	Info:      lipgloss.Color("#7cf8f7"), // Bright cyan

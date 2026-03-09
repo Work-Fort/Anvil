@@ -585,9 +585,7 @@ func (m VersionSelectorModel) View() tea.View {
 	tabHelp := tabKeys.RenderInline(helpStyle)
 	contentWithHelp := lipgloss.JoinVertical(lipgloss.Left, tabContent, "", tabHelp)
 
-	borderWidth := 2
-	contentWidth := m.width - borderWidth
-	contentPane := RenderTabContent(contentWithHelp, contentWidth, 0)
+	contentPane := RenderTabContent(contentWithHelp, m.width, 0)
 
 	help := theme.RenderFooter(m.width, m.globalKeys.Render(lipgloss.NewStyle()))
 

@@ -153,7 +153,7 @@ func (m WizardModel) View() tea.View {
 
 	content := ui.RenderTabContent(
 		activeContent,
-		m.width-2,
+		m.width,
 		contentHeight,
 	)
 

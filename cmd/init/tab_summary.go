@@ -132,7 +132,7 @@ func (t *SummaryTab) View() string {
 			"",
 			theme.SubtleStyle().Render(t.err.Error()),
 			"",
-			theme.SubtleStyle().Render("Press r to retry, q to quit"),
+			theme.TextDimStyle().Render("Press r to retry, q to quit"),
 			"",
 		)
 	}
@@ -171,7 +171,7 @@ func (t *SummaryTab) View() string {
 		contentParts = append(contentParts, fileLines...)
 		contentParts = append(contentParts,
 			"",
-			theme.SubtleStyle().Render("Press Enter or q to exit"),
+			theme.TextDimStyle().Render("Press Enter or q to exit"),
 			"",
 		)
 

@@ -1083,12 +1083,8 @@ func (m *BuildKernelWizard) View() tea.View {
 		borderLines = 2
 	)
 	contentHeight := m.height - headerLines - tabLines - helpLines - blankLines - borderLines
-	// CRITICAL: Width() includes padding inside, only borders add to rendered width
-	// Content width = terminal width - border width (2 chars)
-	contentWidth := m.width - 2
-
-	// Render content pane FIRST to get its actual width
-	contentPane := RenderTabContent(content, contentWidth, contentHeight)
+	// In lipgloss v2, Width() sets total rendered width (borders are inside)
+	contentPane := RenderTabContent(content, m.width, contentHeight)
 	actualContentWidth := lipgloss.Width(contentPane)
 
 	// Render tabs to match content pane's actual rendered width
