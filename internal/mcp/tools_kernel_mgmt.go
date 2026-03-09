@@ -58,11 +58,20 @@ func handleKernelList(_ context.Context, req gomcp.CallToolRequest) (*gomcp.Call
 		return errResult(err)
 	}
 
-	// Check for default symlink
+	// Determine default kernel version from the data dir symlink (matches CLI behavior)
 	defaultTarget := ""
-	defaultLink := filepath.Join(kernelsDir, "default")
-	if target, err := os.Readlink(defaultLink); err == nil {
-		defaultTarget = filepath.Base(target)
+	kernelName, err := config.GetKernelName()
+	if err == nil {
+		kernelSymlink := filepath.Join(config.GlobalPaths.DataDir, kernelName)
+		if target, linkErr := os.Readlink(kernelSymlink); linkErr == nil {
+			parts := strings.Split(target, "/")
+			for i, part := range parts {
+				if part == "kernels" && i+1 < len(parts) {
+					defaultTarget = parts[i+1]
+					break
+				}
+			}
+		}
 	}
 
 	var kernels []map[string]any
@@ -116,11 +125,20 @@ func handleKernelGet(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallT
 		files = append(files, e.Name())
 	}
 
-	// Check if this is the default
-	defaultLink := filepath.Join(config.GlobalPaths.KernelsDir, "default")
+	// Determine if this is the default kernel (resolve via data dir symlink, matches CLI)
 	isDefault := false
-	if target, err := os.Readlink(defaultLink); err == nil {
-		isDefault = filepath.Base(target) == version
+	kernelName, nameErr := config.GetKernelName()
+	if nameErr == nil {
+		kernelSymlink := filepath.Join(config.GlobalPaths.DataDir, kernelName)
+		if target, linkErr := os.Readlink(kernelSymlink); linkErr == nil {
+			parts := strings.Split(target, "/")
+			for i, part := range parts {
+				if part == "kernels" && i+1 < len(parts) {
+					isDefault = parts[i+1] == version
+					break
+				}
+			}
+		}
 	}
 
 	return jsonResult(map[string]any{
