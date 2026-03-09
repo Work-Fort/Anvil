@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/Work-Fort/Anvil/pkg/firecracker/embedded"
 	"libguestfs.org/guestfs"
 )
 
@@ -87,7 +88,7 @@ ip link set lo up
 
 # Print boot info
 echo "=========================================="
-echo "Cracker Barrel Firecracker VM"
+echo "Anvil Firecracker VM"
 echo "Kernel version: $(uname -r)"
 echo "Architecture: $(uname -m)"
 echo "=========================================="
@@ -166,12 +167,13 @@ func Create(opts CreateOptions) error {
 	}
 	if opts.InjectBinary {
 		if opts.BinaryPath == "" {
-			// Default to current executable
-			exe, err := os.Executable()
+			// Extract the embedded static vsock-server binary
+			vsockPath, cleanup, err := embedded.ExtractVsockServer()
 			if err != nil {
-				return fmt.Errorf("failed to get current executable path: %w", err)
+				return fmt.Errorf("failed to extract embedded vsock-server: %w", err)
 			}
-			opts.BinaryPath = exe
+			defer cleanup()
+			opts.BinaryPath = vsockPath
 		}
 		if opts.BinaryDestPath == "" {
 			opts.BinaryDestPath = "/usr/bin/vsock-server"

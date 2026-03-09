@@ -143,7 +143,7 @@ func DownloadWithProgress(version string, client *github.Client, paths *config.P
 	if progressCallback != nil {
 		progressCallback(0) // Reset to 0 for this step
 	}
-	log.Debug("Importing Cracker Barrel signing key")
+	log.Debug("Importing Anvil signing key")
 	keyFile := filepath.Join(paths.CacheDir, "signing-key.asc")
 	if err := client.DownloadFile(fmt.Sprintf("%s/signing-key.asc", releaseURL), keyFile, progressCallback); err != nil {
 		return fmt.Errorf("failed to download signing key: %w", err)

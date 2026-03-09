@@ -189,6 +189,26 @@ func runNonInteractiveWithFlags(flags InitFlags) error {
 		return err
 	}
 
+	// Generate signing key
+	format := signing.KeyFormatArmored
+	if flags.KeyFormat == "binary" {
+		format = signing.KeyFormatBinary
+	}
+
+	keyOpts := signing.GenerateKeyOptions{
+		Name:       flags.KeyName,
+		Email:      flags.KeyEmail,
+		Expiry:     flags.KeyExpiry,
+		Format:     format,
+		Password:   password,
+		OutputDir:  "keys",
+		SkipBackup: true,
+	}
+
+	if _, err := signing.GenerateKey(keyOpts); err != nil {
+		return fmt.Errorf("failed to generate signing key: %w", err)
+	}
+
 	// Print success message
 	theme := config.CurrentTheme
 	fmt.Println(theme.SuccessMessage("Repository initialized successfully"))

@@ -35,20 +35,19 @@ func GetSigningPassword(source PasswordSource, prompt string) (string, error) {
 	case PasswordSourceTUI:
 		return getPasswordFromTUI(prompt)
 	case PasswordSourceAuto:
-		// Try stdin first (if data available)
+		// Try ENV first (cheapest, no I/O)
+		password, err := getPasswordFromEnv()
+		if err == nil {
+			return password, nil
+		}
+
+		// Try stdin second (if piped)
 		stat, _ := os.Stdin.Stat()
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			// Stdin is a pipe, not a terminal
 			password, err := getPasswordFromStdin()
 			if err == nil {
 				return password, nil
 			}
-		}
-
-		// Try ENV second
-		password, err := getPasswordFromEnv()
-		if err == nil {
-			return password, nil
 		}
 
 		// Fall back to TUI

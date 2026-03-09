@@ -35,15 +35,15 @@ func GenerateJSONSchema() ([]byte, error) {
 // GenerateJSONSchemaForScope generates a JSON Schema filtered by scope
 // Pass nil to include all keys, or a specific scope to filter
 func GenerateJSONSchemaForScope(scope *ConfigScope) ([]byte, error) {
-	title := "Cracker Barrel Configuration"
-	description := "Configuration schema for Cracker Barrel CLI tool"
+	title := "Anvil Configuration"
+	description := "Configuration schema for Anvil CLI tool"
 
 	if scope != nil {
 		if *scope == ScopeUser {
-			title = "Cracker Barrel User Configuration"
+			title = "Anvil User Configuration"
 			description = "User-specific configuration (personal preferences)"
 		} else {
-			title = "Cracker Barrel Repo Configuration"
+			title = "Anvil Repo Configuration"
 			description = "Repository-specific configuration (project settings)"
 		}
 	}

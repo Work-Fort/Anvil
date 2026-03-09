@@ -66,7 +66,7 @@ func handleSetRepoRoot(_ context.Context, req gomcp.CallToolRequest) (*gomcp.Cal
 
 	config.SetUserModeOverride(false)
 
-	if err := config.LoadConfig(); err != nil {
+	if err := config.ReloadConfig(); err != nil {
 		return errResult(fmt.Errorf("failed to reload config: %w", err))
 	}
 
@@ -76,7 +76,7 @@ func handleSetRepoRoot(_ context.Context, req gomcp.CallToolRequest) (*gomcp.Cal
 func handleSetUserMode(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 	config.SetUserModeOverride(true)
 
-	if err := config.LoadConfig(); err != nil {
+	if err := config.ReloadConfig(); err != nil {
 		return errResult(fmt.Errorf("failed to reload config: %w", err))
 	}
 

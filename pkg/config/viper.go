@@ -37,6 +37,14 @@ func InitViper() {
 	viper.AutomaticEnv()
 }
 
+// ReloadConfig resets viper state and re-initializes from scratch.
+// Use this when the working directory or mode changes (e.g. set_repo_root).
+func ReloadConfig() error {
+	viper.Reset()
+	InitViper()
+	return LoadConfig()
+}
+
 // LoadConfig reads config files in precedence order
 // Precedence: ENV > ./anvil.yaml > ~/.config/anvil/config.yaml > defaults
 func LoadConfig() error {

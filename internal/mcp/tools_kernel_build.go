@@ -2,15 +2,42 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"strings"
+	"sync"
 
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/kernel"
 	gomcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
+
+// jobLogWriter is an io.Writer that splits output into lines and appends them to a BuildJob.
+type jobLogWriter struct {
+	job     *BuildJob
+	mu      sync.Mutex
+	partial string
+}
+
+func (w *jobLogWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	w.partial += string(p)
+	for {
+		idx := strings.IndexByte(w.partial, '\n')
+		if idx < 0 {
+			break
+		}
+		line := w.partial[:idx]
+		w.partial = w.partial[idx+1:]
+		if line != "" {
+			w.job.AppendLog(line)
+		}
+	}
+	return len(p), nil
+}
 
 func registerKernelBuildTools(s *server.MCPServer, bm *BuildManager) {
 	s.AddTool(gomcp.NewTool("kernel_build",
@@ -125,14 +152,16 @@ func handleKernelBuild(s *server.MCPServer, bm *BuildManager, ctx context.Contex
 	buildCtx, cancel := context.WithCancel(context.Background())
 	job := bm.NewJob(version, arch, cancel)
 
-	var logBuf bytes.Buffer
+	logWriter := &jobLogWriter{job: job}
+
+	var buildStats kernel.BuildStats
 
 	opts := kernel.BuildOptions{
 		Version:           version,
 		Arch:              arch,
 		ConfigFile:        configFile,
 		VerificationLevel: verLevel,
-		Writer:            &logBuf,
+		Writer:            logWriter,
 		Context:           buildCtx,
 		PhaseCallback: func(phase kernel.BuildPhase) {
 			name := phaseName(phase)
@@ -143,6 +172,9 @@ func handleKernelBuild(s *server.MCPServer, bm *BuildManager, ctx context.Contex
 		},
 		ProgressCallback: func(pct float64) {
 			job.SetProgress(pct)
+		},
+		StatsCallback: func(stats kernel.BuildStats) {
+			buildStats = stats
 		},
 	}
 
@@ -156,10 +188,7 @@ func handleKernelBuild(s *server.MCPServer, bm *BuildManager, ctx context.Contex
 			return
 		}
 
-		// Try to read build stats
-		statsPath := "" // The build function stores stats alongside the output
-		stats, _ := kernel.ReadBuildStats(statsPath)
-		job.Complete(&stats)
+		job.Complete(&buildStats)
 		_ = s.SendNotificationToClient(ctx, "kernel_build.completed", map[string]any{
 			"build_id": job.ID, "status": "completed",
 		})

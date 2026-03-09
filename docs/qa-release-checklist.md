@@ -12,7 +12,16 @@
 
 ## 1. Configuration System
 
-### CLI
+Test in a temp repo so you never modify production config:
+
+```bash
+export CONFIGDIR=$(mktemp -d)
+cd "$CONFIGDIR"
+ANVIL_SIGNING_PASSWORD=test_password anvil init \
+  --key-name "QA Config Test" --key-email "qa@test.com" --use-tui=false
+```
+
+### CLI (run from $CONFIGDIR)
 
 - [ ] `anvil config list` — shows all config values with sources
 - [ ] `anvil config get signing.key.name` — returns correct value and source
@@ -21,8 +30,9 @@
 - [ ] `anvil config unset log-level` — removes override, falls back to default
 - [ ] `anvil config schema` — outputs valid JSON Schema
 
-### MCP
+### MCP (switch to $CONFIGDIR first)
 
+- [ ] `set_repo_root` path=`$CONFIGDIR` — switches to test repo
 - [ ] `config_list` — returns array of {key, value, source}
 - [ ] `config_get` key=`signing.key.name` — matches CLI output
 - [ ] `config_set` key=`log-level` value=`info` — sets value
@@ -35,6 +45,12 @@
 
 - [ ] Value set via CLI is visible via MCP `config_get`
 - [ ] Value set via MCP is visible via `anvil config get`
+
+Clean up:
+
+```bash
+rm -rf "$CONFIGDIR"
+```
 
 ---
 
@@ -105,13 +121,39 @@ Pick a recent stable version (e.g. the latest from step 2).
 
 - [ ] Key info from CLI matches MCP `signing_list` output
 
-### Sign & Verify (requires built kernel with artifacts)
+### Sign & Verify
 
-Create a test artifacts directory or use the build output:
+Test in an isolated temp repo so you never touch production keys:
 
-- [ ] `signing_sign` path=`<artifacts_dir>` — status=signed
-- [ ] `signing_verify` path=`<artifacts_dir>` — verified=true
-- [ ] CLI `anvil signing verify <artifacts_dir>` — exits 0
+```bash
+export TESTDIR=$(mktemp -d)
+cd "$TESTDIR"
+ANVIL_SIGNING_PASSWORD=test_password anvil init \
+  --key-name "QA Test" --key-email "qa@test.com" --use-tui=false
+```
+
+Create test artifacts to sign:
+
+```bash
+mkdir -p "$TESTDIR/artifacts"
+echo "hello" > "$TESTDIR/artifacts/test.bin"
+sha256sum "$TESTDIR/artifacts/test.bin" > "$TESTDIR/artifacts/SHA256SUMS"
+```
+
+Run sign & verify from the test repo directory:
+
+- [ ] CLI `cd "$TESTDIR" && ANVIL_SIGNING_PASSWORD=test_password anvil signing sign artifacts/` — exits 0
+- [ ] CLI `cd "$TESTDIR" && anvil signing verify artifacts/` — exits 0
+- [ ] MCP: `set_repo_root` path=`$TESTDIR` — switches context to test repo
+- [ ] MCP: `signing_sign` path=`$TESTDIR/artifacts` — status=signed (requires `ANVIL_SIGNING_PASSWORD=test_password` in MCP server env)
+- [ ] MCP: `signing_verify` path=`$TESTDIR/artifacts` — verified=true
+- [ ] MCP: `set_repo_root` path=`<original_repo>` — switch back
+
+Clean up:
+
+```bash
+rm -rf "$TESTDIR"
+```
 
 ---
 
@@ -191,11 +233,13 @@ If multiple kernel/firecracker versions installed:
 
 ## 8. Init Command (fresh repo test)
 
-Test in a temporary directory:
+Test in a temporary directory (use `ANVIL_SIGNING_PASSWORD` so the key is encrypted):
 
 ```bash
-cd $(mktemp -d)
-anvil init --key-name "Test" --key-email "test@test.com" --use-tui=false
+INITDIR=$(mktemp -d)
+cd "$INITDIR"
+ANVIL_SIGNING_PASSWORD=test_password anvil init \
+  --key-name "Test" --key-email "test@test.com" --use-tui=false
 ```
 
 - [ ] Creates `anvil.yaml`
