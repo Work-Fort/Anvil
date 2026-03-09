@@ -29,22 +29,17 @@ type AvailableVersion struct {
 }
 
 // Get gets a kernel by trying to download pre-built version first, then building from source if needed
-func Get(version string, buildOpts *BuildOptions) error {
+func Get(version string, paths *config.Paths, buildOpts *BuildOptions) error {
 	// Try to download pre-built kernel first
-	if err := Download(version); err == nil {
+	if err := Download(version, paths); err == nil {
 		// Download successful
 		return nil
 	}
 
 	// Download failed or not available, build from source
-	fmt.Println()
-	fmt.Println("[INFO] Pre-built kernel not available, building from source...")
-	fmt.Println()
-
 	// Use provided build options or create default ones
 	opts := BuildOptions{
-		Version:     version,
-		Interactive: true, // Default to interactive for Get
+		Version: version,
 	}
 	if buildOpts != nil {
 		opts = *buildOpts
@@ -52,16 +47,16 @@ func Get(version string, buildOpts *BuildOptions) error {
 		opts.Version = version
 	}
 
-	return Build(opts)
+	return Build(opts, paths)
 }
 
 // Download downloads and verifies a kernel version with optional progress callback
-func Download(version string) error {
-	return DownloadWithProgress(version, nil, nil)
+func Download(version string, paths *config.Paths) error {
+	return DownloadWithProgress(version, paths, nil, nil)
 }
 
 // DownloadWithProgress downloads and verifies a kernel version with progress and status tracking
-func DownloadWithProgress(version string, progressCallback func(float64), statusCallback func(string)) error {
+func DownloadWithProgress(version string, paths *config.Paths, progressCallback func(float64), statusCallback func(string)) error {
 	arch, err := config.GetArch()
 	if err != nil {
 		return err
@@ -87,7 +82,7 @@ func DownloadWithProgress(version string, progressCallback func(float64), status
 	}
 
 	filename := fmt.Sprintf("%s-%s-%s.xz", kernelName, version, arch)
-	outputDir := filepath.Join(config.GlobalPaths.KernelsDir, version)
+	outputDir := filepath.Join(paths.KernelsDir, version)
 	outputFile := filepath.Join(outputDir, fmt.Sprintf("%s-%s-%s", kernelName, version, arch))
 
 	// Check if already downloaded
@@ -103,7 +98,7 @@ func DownloadWithProgress(version string, progressCallback func(float64), status
 	}
 
 	releaseURL := fmt.Sprintf("https://github.com/%s/releases/download/v%s", config.GitHubRepo, version)
-	tempFile := filepath.Join(config.GlobalPaths.CacheDir, filename)
+	tempFile := filepath.Join(paths.CacheDir, filename)
 
 	// Download compressed kernel
 	if statusCallback != nil {
@@ -125,7 +120,7 @@ func DownloadWithProgress(version string, progressCallback func(float64), status
 		progressCallback(0) // Reset to 0 for this step
 	}
 	log.Debug("Downloading checksums")
-	checksumFile := filepath.Join(config.GlobalPaths.CacheDir, "SHA256SUMS")
+	checksumFile := filepath.Join(paths.CacheDir, "SHA256SUMS")
 	if err := client.DownloadFile(fmt.Sprintf("%s/SHA256SUMS", releaseURL), checksumFile, progressCallback); err != nil {
 		return fmt.Errorf("failed to download checksums: %w", err)
 	}
@@ -138,7 +133,7 @@ func DownloadWithProgress(version string, progressCallback func(float64), status
 		progressCallback(0) // Reset to 0 for this step
 	}
 	log.Debug("Downloading PGP signature")
-	sigFile := filepath.Join(config.GlobalPaths.CacheDir, "SHA256SUMS.asc")
+	sigFile := filepath.Join(paths.CacheDir, "SHA256SUMS.asc")
 	if err := client.DownloadFile(fmt.Sprintf("%s/SHA256SUMS.asc", releaseURL), sigFile, progressCallback); err != nil {
 		return fmt.Errorf("failed to download PGP signature: %w", err)
 	}
@@ -151,7 +146,7 @@ func DownloadWithProgress(version string, progressCallback func(float64), status
 		progressCallback(0) // Reset to 0 for this step
 	}
 	log.Debug("Importing Cracker Barrel signing key")
-	keyFile := filepath.Join(config.GlobalPaths.CacheDir, "signing-key.asc")
+	keyFile := filepath.Join(paths.CacheDir, "signing-key.asc")
 	if err := client.DownloadFile(fmt.Sprintf("%s/signing-key.asc", releaseURL), keyFile, progressCallback); err != nil {
 		return fmt.Errorf("failed to download signing key: %w", err)
 	}
@@ -251,14 +246,6 @@ func DownloadWithProgress(version string, progressCallback func(float64), status
 	if statusCallback != nil {
 		statusCallback("Installation complete!")
 	}
-
-	fmt.Printf("✓ Kernel installed: %s\n", outputFile)
-	fmt.Println()
-	fmt.Println("To use with Firecracker:")
-	fmt.Printf("  firecracker --config-file config.json (with \"kernel_image_path\": %q)\n", outputFile)
-	fmt.Println()
-	fmt.Println("To set as default:")
-	fmt.Printf("  anvil set kernel %s\n", version)
 
 	return nil
 }

@@ -61,7 +61,7 @@ If no version is specified, builds the latest stable kernel.`,
 
 			// Check for cached build in non-interactive mode
 			if !buildForceRebuild {
-				hasCached, _, err := kernel.CheckCachedBuild(version)
+				hasCached, _, err := kernel.CheckCachedBuild(version, config.GlobalPaths)
 				if err != nil {
 					return fmt.Errorf("failed to check for cached build: %w", err)
 				}
@@ -82,10 +82,9 @@ If no version is specified, builds the latest stable kernel.`,
 				Arch:              buildArch,
 				VerificationLevel: buildVerificationLevel,
 				ConfigFile:        buildConfig,
-				Interactive:       false, // Non-interactive path
 			}
 
-			if err := kernel.Build(opts); err != nil {
+			if err := kernel.Build(opts, config.GlobalPaths); err != nil {
 				return err
 			}
 

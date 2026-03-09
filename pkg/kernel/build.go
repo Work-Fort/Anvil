@@ -39,7 +39,6 @@ type BuildOptions struct {
 	Arch              string
 	VerificationLevel string
 	ConfigFile        string
-	Interactive       bool             // Whether to show TUI
 	Writer            io.Writer        // Optional: custom writer for build output (for TUI streaming)
 	ProgressCallback  func(float64)    // Optional: callback for download progress (0.0 to 1.0)
 	PhaseCallback     func(BuildPhase) // Optional: callback for phase transitions
@@ -100,7 +99,7 @@ func (bl *buildLogger) Debug(msg string) {
 }
 
 // Build builds a kernel from source
-func Build(opts BuildOptions) error {
+func Build(opts BuildOptions, paths *config.Paths) error {
 	// Default to host architecture if not specified
 	if opts.Arch == "" {
 		opts.Arch = runtime.GOARCH
@@ -147,7 +146,7 @@ func Build(opts BuildOptions) error {
 			archOpts.Arch = arch
 
 			logger := &buildLogger{writer: writer}
-			if err := runBuild(archOpts, logger, opts.ProgressCallback, opts.PhaseCallback, ctx); err != nil {
+			if err := runBuild(archOpts, paths, logger, opts.ProgressCallback, opts.PhaseCallback, ctx); err != nil {
 				return fmt.Errorf("failed to build for %s: %w", arch, err)
 			}
 		}
@@ -156,7 +155,7 @@ func Build(opts BuildOptions) error {
 
 	// Single architecture build
 	logger := &buildLogger{writer: writer}
-	if err := runBuild(opts, logger, opts.ProgressCallback, opts.PhaseCallback, ctx); err != nil {
+	if err := runBuild(opts, paths, logger, opts.ProgressCallback, opts.PhaseCallback, ctx); err != nil {
 		return err
 	}
 
@@ -164,7 +163,7 @@ func Build(opts BuildOptions) error {
 }
 
 // runBuild executes the actual build process
-func runBuild(opts BuildOptions, logger *buildLogger, progressCallback func(float64), phaseCallback func(BuildPhase), ctx context.Context) error {
+func runBuild(opts BuildOptions, paths *config.Paths, logger *buildLogger, progressCallback func(float64), phaseCallback func(BuildPhase), ctx context.Context) error {
 	// Track build timing
 	buildStartTime := time.Now()
 	var downloadStart, extractStart, configureStart, compileStart, packageStart time.Time
@@ -178,8 +177,8 @@ func runBuild(opts BuildOptions, logger *buildLogger, progressCallback func(floa
 		default:
 		}
 	}
-	buildDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "build")
-	artifactsDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "artifacts")
+	buildDir := filepath.Join(paths.KernelBuildDir, "build")
+	artifactsDir := filepath.Join(paths.KernelBuildDir, "artifacts")
 
 	// Create directories
 	if err := os.MkdirAll(buildDir, 0755); err != nil {
@@ -403,13 +402,13 @@ func ReadBuildStats(path string) (BuildStats, error) {
 
 // CheckKernelInstalled checks if a kernel with the given build stats is installed
 // Returns (isInstalled, timestampedVersion, error)
-func CheckKernelInstalled(stats BuildStats) (bool, string, error) {
+func CheckKernelInstalled(stats BuildStats, paths *config.Paths) (bool, string, error) {
 	// Generate the timestamped version name
 	timestamp := stats.BuildTimestamp.Format("20060102T150405")
 	versionWithTimestamp := fmt.Sprintf("%s-%s", stats.KernelVersion, timestamp)
 
 	// Check if the directory exists in kernels dir
-	kernelDir := filepath.Join(config.GlobalPaths.KernelsDir, versionWithTimestamp)
+	kernelDir := filepath.Join(paths.KernelsDir, versionWithTimestamp)
 	if _, err := os.Stat(kernelDir); os.IsNotExist(err) {
 		return false, "", nil
 	} else if err != nil {
@@ -421,8 +420,8 @@ func CheckKernelInstalled(stats BuildStats) (bool, string, error) {
 }
 
 // CheckCachedBuild checks if a completed build exists for the given version
-func CheckCachedBuild(version string) (bool, string, error) {
-	artifactsDir := filepath.Join(config.GlobalPaths.KernelBuildDir, "artifacts")
+func CheckCachedBuild(version string, paths *config.Paths) (bool, string, error) {
+	artifactsDir := filepath.Join(paths.KernelBuildDir, "artifacts")
 	statsFile := filepath.Join(artifactsDir, "build-stats.json")
 
 	// Check if build-stats.json exists
@@ -491,7 +490,7 @@ func collectBuildStats(version, kernelPath string, totalDuration, downloadDurati
 }
 
 // InstallBuiltKernel installs a built kernel to the kernels directory with a timestamped name
-func InstallBuiltKernel(stats BuildStats, setAsDefault bool) (string, error) {
+func InstallBuiltKernel(stats BuildStats, setAsDefault bool, paths *config.Paths) (string, error) {
 	arch, err := config.GetArch()
 	if err != nil {
 		return "", err
@@ -508,7 +507,7 @@ func InstallBuiltKernel(stats BuildStats, setAsDefault bool) (string, error) {
 	versionWithTimestamp := fmt.Sprintf("%s-%s", stats.KernelVersion, timestamp)
 
 	// Create destination directory
-	destDir := filepath.Join(config.GlobalPaths.KernelsDir, versionWithTimestamp)
+	destDir := filepath.Join(paths.KernelsDir, versionWithTimestamp)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create kernel directory: %w", err)
 	}
@@ -544,7 +543,7 @@ func InstallBuiltKernel(stats BuildStats, setAsDefault bool) (string, error) {
 
 	// Set as default if requested
 	if setAsDefault {
-		symlinkPath := filepath.Join(config.GlobalPaths.DataDir, kernelName)
+		symlinkPath := filepath.Join(paths.DataDir, kernelName)
 
 		// Remove existing symlink
 		os.Remove(symlinkPath)

@@ -226,7 +226,7 @@ func ShowVersionSelector(target string) error {
 	downloadFn := func(version string, progressCallback func(float64), statusCallback func(string)) error {
 		switch target {
 		case "kernel":
-			return kernel.DownloadWithProgress(version, progressCallback, statusCallback)
+			return kernel.DownloadWithProgress(version, config.GlobalPaths, progressCallback, statusCallback)
 		case "firecracker":
 			return firecracker.DownloadWithProgress(version, progressCallback, statusCallback)
 		default:

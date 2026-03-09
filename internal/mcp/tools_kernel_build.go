@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/kernel"
 	gomcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -131,7 +132,6 @@ func handleKernelBuild(s *server.MCPServer, bm *BuildManager, ctx context.Contex
 		Arch:              arch,
 		ConfigFile:        configFile,
 		VerificationLevel: verLevel,
-		Interactive:       false,
 		Writer:            &logBuf,
 		Context:           buildCtx,
 		PhaseCallback: func(phase kernel.BuildPhase) {
@@ -148,7 +148,7 @@ func handleKernelBuild(s *server.MCPServer, bm *BuildManager, ctx context.Contex
 
 	// Run build in background goroutine
 	go func() {
-		if err := kernel.Build(opts); err != nil {
+		if err := kernel.Build(opts, config.GlobalPaths); err != nil {
 			job.Fail(err)
 			_ = s.SendNotificationToClient(ctx, "kernel_build.completed", map[string]any{
 				"build_id": job.ID, "status": "failed", "error": err.Error(),

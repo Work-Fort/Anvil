@@ -163,7 +163,7 @@ func handleKernelInstall(_ context.Context, req gomcp.CallToolRequest) (*gomcp.C
 		return errResult(fmt.Errorf("cached build is for %s, not %s", stats.KernelVersion, version))
 	}
 
-	installPath, err := kernel.InstallBuiltKernel(stats, setDefault)
+	installPath, err := kernel.InstallBuiltKernel(stats, setDefault, config.GlobalPaths)
 	if err != nil {
 		return errResult(err)
 	}

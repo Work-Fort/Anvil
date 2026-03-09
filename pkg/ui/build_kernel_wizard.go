@@ -252,7 +252,7 @@ func (m *BuildKernelWizard) Init() tea.Cmd {
 	// Skip cached build if force rebuild is requested
 	if !m.forceRebuild {
 		// Check if a cached build exists
-		hasCached, statsFile, err := kernel.CheckCachedBuild("")
+		hasCached, statsFile, err := kernel.CheckCachedBuild("", config.GlobalPaths)
 		if err != nil {
 			log.Debugf("Error checking cached build: %v", err)
 		}
@@ -796,7 +796,7 @@ func (m *BuildKernelWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.isCachedBuild = true // Mark as cached build (no actual build ran)
 
 		// Check if this build is already installed
-		if isInstalled, installedVer, err := kernel.CheckKernelInstalled(msg.Stats); err == nil && isInstalled {
+		if isInstalled, installedVer, err := kernel.CheckKernelInstalled(msg.Stats, config.GlobalPaths); err == nil && isInstalled {
 			m.kernelInstalled = true
 			m.installedVersion = installedVer
 			log.Debugf("Cached build is already installed: %s", installedVer)
@@ -931,7 +931,6 @@ func (m *BuildKernelWizard) startBuild() tea.Cmd {
 					Arch:              m.arch,
 					VerificationLevel: m.verificationLevel,
 					ConfigFile:        m.configFile,
-					Interactive:       false,            // Non-interactive (we're in TUI)
 					Writer:            pw,               // Stream output to pipe for TUI
 					ProgressCallback:  progressCallback, // Download progress callback
 					PhaseCallback:     phaseCallback,    // Phase transition callback
@@ -942,7 +941,7 @@ func (m *BuildKernelWizard) startBuild() tea.Cmd {
 				log.Debugf("Build options: %+v", opts)
 
 				// Run actual kernel build - output will stream through pw
-				if err := kernel.Build(opts); err != nil {
+				if err := kernel.Build(opts, config.GlobalPaths); err != nil {
 					// Write error to pipe so it gets captured
 					pw.Write([]byte(fmt.Sprintf("[ERROR] Build failed: %s\n", err.Error())))
 				}
@@ -1454,7 +1453,7 @@ func (m *BuildKernelWizard) installKernel(setAsDefault bool) tea.Cmd {
 		}
 
 		// Install kernel with timestamp
-		installedVersion, err := kernel.InstallBuiltKernel(kernelStats, setAsDefault)
+		installedVersion, err := kernel.InstallBuiltKernel(kernelStats, setAsDefault, config.GlobalPaths)
 		if err != nil {
 			return InstallKernelMsg{
 				Success: false,

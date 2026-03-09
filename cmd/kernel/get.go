@@ -3,6 +3,7 @@ package kernel
 
 import (
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
+	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/kernel"
 	"github.com/spf13/cobra"
 )
@@ -26,10 +27,9 @@ func newGetCmd() *cobra.Command {
 
 			// Try download first, build if not available
 			buildOpts := kernel.BuildOptions{
-				Version:     version,
-				Interactive: cmdutil.IsInteractive(),
+				Version: version,
 			}
-			return kernel.Get(version, &buildOpts)
+			return kernel.Get(version, config.GlobalPaths, &buildOpts)
 		},
 	}
 }
