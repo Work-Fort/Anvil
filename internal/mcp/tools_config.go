@@ -39,6 +39,11 @@ func handleConfigGet(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallT
 		return errResult(err)
 	}
 
+	// Re-read config from disk to pick up external changes (e.g. CLI edits)
+	if err := config.ReloadConfig(); err != nil {
+		return errResult(err)
+	}
+
 	val, err := config.GetConfigValue(key)
 	if err != nil {
 		return errResult(err)
@@ -84,6 +89,11 @@ func handleConfigSet(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallT
 }
 
 func handleConfigList(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
+	// Re-read config from disk to pick up external changes (e.g. CLI edits)
+	if err := config.ReloadConfig(); err != nil {
+		return errResult(err)
+	}
+
 	values, err := config.ListConfigValues()
 	if err != nil {
 		return errResult(err)
