@@ -2,7 +2,10 @@
 package firecracker
 
 import (
+	"fmt"
+
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
+	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/firecracker"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +29,12 @@ If no version is specified, the latest version will be downloaded.`,
 				return cmdutil.ShowVersionSelector("firecracker")
 			}
 
-			return firecracker.Download(version)
+			if err := firecracker.Download(version, config.GlobalPaths); err != nil {
+				return err
+			}
+
+			fmt.Printf("✓ Firecracker %s downloaded successfully\n", version)
+			return nil
 		},
 	}
 }

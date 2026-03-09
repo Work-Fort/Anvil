@@ -37,7 +37,7 @@ type TestResult struct {
 }
 
 // Test runs a full end-to-end test of Firecracker with vsock
-func Test(opts TestOptions) (*TestResult, error) {
+func Test(opts TestOptions, paths *config.Paths) (*TestResult, error) {
 	startTime := time.Now()
 	result := &TestResult{}
 
@@ -57,7 +57,7 @@ func Test(opts TestOptions) (*TestResult, error) {
 
 	// Step 1: Verify kernel exists
 	logger("Checking kernel...")
-	kernelPath, err := getKernelPath(opts.KernelVersion)
+	kernelPath, err := getKernelPath(opts.KernelVersion, paths)
 	if err != nil {
 		result.Error = fmt.Errorf("kernel not found: %w", err)
 		return result, result.Error
@@ -69,7 +69,7 @@ func Test(opts TestOptions) (*TestResult, error) {
 	logger("Checking rootfs...")
 	rootfsPath := opts.RootfsPath
 	if rootfsPath == "" {
-		rootfsPath = filepath.Join(config.GlobalPaths.DataDir, "alpine-rootfs.ext4")
+		rootfsPath = filepath.Join(paths.DataDir, "alpine-rootfs.ext4")
 	}
 
 	if _, err := os.Stat(rootfsPath); os.IsNotExist(err) {
@@ -106,7 +106,7 @@ func Test(opts TestOptions) (*TestResult, error) {
 
 	// Step 3: Find Firecracker binary
 	logger("Checking Firecracker binary...")
-	firecrackerPath, err := getFirecrackerBinary()
+	firecrackerPath, err := getFirecrackerBinary(paths)
 	if err != nil {
 		result.Error = fmt.Errorf("firecracker binary not found: %w", err)
 		return result, result.Error
@@ -284,14 +284,14 @@ func Test(opts TestOptions) (*TestResult, error) {
 }
 
 // getKernelPath finds the kernel binary path for the given version
-func getKernelPath(version string) (string, error) {
+func getKernelPath(version string, paths *config.Paths) (string, error) {
 	if version == "" {
 		// Use default kernel
 		kernelName, err := config.GetKernelName()
 		if err != nil {
 			return "", fmt.Errorf("failed to get kernel name: %w", err)
 		}
-		defaultLink := filepath.Join(config.GlobalPaths.DataDir, kernelName)
+		defaultLink := filepath.Join(paths.DataDir, kernelName)
 		target, err := os.Readlink(defaultLink)
 		if err != nil {
 			return "", fmt.Errorf("no default kernel set: %w", err)
@@ -303,7 +303,7 @@ func getKernelPath(version string) (string, error) {
 		version = filepath.Base(filepath.Dir(target))
 	}
 
-	kernelDir := filepath.Join(config.GlobalPaths.DataDir, "kernels", version)
+	kernelDir := filepath.Join(paths.DataDir, "kernels", version)
 	entries, err := os.ReadDir(kernelDir)
 	if err != nil {
 		return "", fmt.Errorf("kernel version not found: %s", version)
@@ -322,9 +322,9 @@ func getKernelPath(version string) (string, error) {
 }
 
 // getFirecrackerBinary finds the Firecracker binary
-func getFirecrackerBinary() (string, error) {
+func getFirecrackerBinary(paths *config.Paths) (string, error) {
 	// Use default Firecracker
-	defaultLink := filepath.Join(config.GlobalPaths.DataDir, "firecracker", "default")
+	defaultLink := filepath.Join(paths.DataDir, "firecracker", "default")
 	target, err := os.Readlink(defaultLink)
 	if err != nil {
 		return "", fmt.Errorf("no default Firecracker version set: %w", err)
@@ -334,7 +334,7 @@ func getFirecrackerBinary() (string, error) {
 	// Path format: .../firecracker/1.14.1/firecracker
 	// Get parent directory name which is the version
 	version := filepath.Base(filepath.Dir(target))
-	binaryPath := filepath.Join(config.GlobalPaths.DataDir, "firecracker", version, "firecracker")
+	binaryPath := filepath.Join(paths.DataDir, "firecracker", version, "firecracker")
 
 	if _, err := os.Stat(binaryPath); err != nil {
 		return "", fmt.Errorf("firecracker binary not found: %s", binaryPath)

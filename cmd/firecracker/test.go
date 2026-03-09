@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/firecracker"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +53,7 @@ This validates that your kernels and rootfs have working virtio-vsock features.`
 				PingTimeout:   pingTimeout,
 			}
 
-			result, err := firecracker.Test(opts)
+			result, err := firecracker.Test(opts, config.GlobalPaths)
 			if err != nil {
 				// Print error details
 				fmt.Fprintf(os.Stderr, "\nTest failed: %v\n", err)

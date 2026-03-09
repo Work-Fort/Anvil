@@ -228,7 +228,7 @@ func ShowVersionSelector(target string) error {
 		case "kernel":
 			return kernel.DownloadWithProgress(version, config.GlobalPaths, progressCallback, statusCallback)
 		case "firecracker":
-			return firecracker.DownloadWithProgress(version, progressCallback, statusCallback)
+			return firecracker.DownloadWithProgress(version, config.GlobalPaths, progressCallback, statusCallback)
 		default:
 			return fmt.Errorf("unknown target: %s", target)
 		}
@@ -239,7 +239,7 @@ func ShowVersionSelector(target string) error {
 		case "kernel":
 			return kernel.Set(version, config.GlobalPaths)
 		case "firecracker":
-			return firecracker.Set(version)
+			return firecracker.Set(version, config.GlobalPaths)
 		default:
 			return fmt.Errorf("unknown target: %s", target)
 		}

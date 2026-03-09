@@ -3,7 +3,6 @@ package mcp
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -71,7 +70,7 @@ func handleFirecrackerTest(_ context.Context, req gomcp.CallToolRequest) (*gomcp
 		PingTimeout:   pingTimeout,
 	}
 
-	result, err := firecracker.Test(opts)
+	result, err := firecracker.Test(opts, config.GlobalPaths)
 	if err != nil {
 		return errResult(err)
 	}
@@ -86,47 +85,33 @@ func handleFirecrackerTest(_ context.Context, req gomcp.CallToolRequest) (*gomcp
 }
 
 func handleFirecrackerList(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
-	fcDir := config.GlobalPaths.FirecrackerDir
-	entries, err := os.ReadDir(fcDir)
+	versions, err := firecracker.List(config.GlobalPaths)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return jsonResult(map[string]any{"versions": []any{}, "count": 0})
-		}
 		return errResult(err)
 	}
 
-	// Check default symlink
-	defaultTarget := ""
-	defaultLink := filepath.Join(fcDir, "default")
-	if target, err := os.Readlink(defaultLink); err == nil {
-		defaultTarget = filepath.Base(target)
-	}
-
-	var versions []map[string]any
-	for _, entry := range entries {
-		name := entry.Name()
-		if name == "default" {
-			continue
-		}
-		versions = append(versions, map[string]any{
-			"version":    name,
-			"is_default": name == defaultTarget,
-		})
-	}
-
 	if versions == nil {
-		versions = []map[string]any{}
+		versions = []firecracker.FirecrackerInfo{}
+	}
+
+	result := make([]map[string]any, len(versions))
+	for i, v := range versions {
+		result[i] = map[string]any{
+			"version":    v.Version,
+			"is_default": v.IsDefault,
+			"path":       v.Path,
+		}
 	}
 
 	return jsonResult(map[string]any{
-		"versions": versions,
-		"count":    len(versions),
+		"versions": result,
+		"count":    len(result),
 	})
 }
 
 func handleFirecrackerGet(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 	version := req.GetString("version", "")
-	if err := firecracker.Download(version); err != nil {
+	if err := firecracker.Download(version, config.GlobalPaths); err != nil {
 		return errResult(err)
 	}
 	return jsonResult(map[string]any{
@@ -140,7 +125,7 @@ func handleFirecrackerSetDefault(_ context.Context, req gomcp.CallToolRequest) (
 	if err != nil {
 		return errResult(err)
 	}
-	if err := firecracker.Set(version); err != nil {
+	if err := firecracker.Set(version, config.GlobalPaths); err != nil {
 		return errResult(err)
 	}
 	return jsonResult(map[string]any{
@@ -155,12 +140,7 @@ func handleFirecrackerRemove(_ context.Context, req gomcp.CallToolRequest) (*gom
 		return errResult(err)
 	}
 
-	fcDir := filepath.Join(config.GlobalPaths.FirecrackerDir, version)
-	if _, err := os.Stat(fcDir); err != nil {
-		return errResult(err)
-	}
-
-	if err := os.RemoveAll(fcDir); err != nil {
+	if err := firecracker.Remove(version, config.GlobalPaths); err != nil {
 		return errResult(err)
 	}
 
@@ -171,7 +151,28 @@ func handleFirecrackerRemove(_ context.Context, req gomcp.CallToolRequest) (*gom
 }
 
 func handleFirecrackerVersions(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
-	return gomcp.NewToolResultText("Use firecracker_get to download a specific version. Check https://github.com/firecracker-microvm/firecracker/releases for available versions."), nil
+	versions, err := firecracker.ShowVersions(config.GlobalPaths)
+	if err != nil {
+		return errResult(err)
+	}
+
+	if versions == nil {
+		versions = []firecracker.AvailableFirecracker{}
+	}
+
+	result := make([]map[string]any, len(versions))
+	for i, v := range versions {
+		result[i] = map[string]any{
+			"version":      v.Version,
+			"is_installed": v.IsInstalled,
+			"is_default":   v.IsDefault,
+		}
+	}
+
+	return jsonResult(map[string]any{
+		"versions": result,
+		"count":    len(result),
+	})
 }
 
 func handleFirecrackerCreateRootfs(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {

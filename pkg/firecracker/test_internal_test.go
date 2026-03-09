@@ -32,13 +32,10 @@ func TestGetFirecrackerBinary_WithVersionedSymlink(t *testing.T) {
 		t.Fatalf("failed to create symlink: %v", err)
 	}
 
-	// Override global config for test
-	oldDataDir := config.GlobalPaths.DataDir
-	config.GlobalPaths.DataDir = tmpDir
-	defer func() { config.GlobalPaths.DataDir = oldDataDir }()
+	paths := &config.Paths{DataDir: tmpDir}
 
 	// Call getFirecrackerBinary
-	result, err := getFirecrackerBinary()
+	result, err := getFirecrackerBinary(paths)
 	if err != nil {
 		t.Fatalf("getFirecrackerBinary() failed: %v", err)
 	}
@@ -58,14 +55,10 @@ func TestGetFirecrackerBinary_WithVersionedSymlink(t *testing.T) {
 // TestGetFirecrackerBinary_NoSymlink tests error when symlink doesn't exist
 func TestGetFirecrackerBinary_NoSymlink(t *testing.T) {
 	tmpDir := t.TempDir()
-
-	// Override global config for test
-	oldDataDir := config.GlobalPaths.DataDir
-	config.GlobalPaths.DataDir = tmpDir
-	defer func() { config.GlobalPaths.DataDir = oldDataDir }()
+	paths := &config.Paths{DataDir: tmpDir}
 
 	// Call getFirecrackerBinary with no symlink
-	_, err := getFirecrackerBinary()
+	_, err := getFirecrackerBinary(paths)
 	if err == nil {
 		t.Error("getFirecrackerBinary() should fail when symlink doesn't exist")
 	}
@@ -87,13 +80,10 @@ func TestGetFirecrackerBinary_BrokenSymlink(t *testing.T) {
 		t.Fatalf("failed to create symlink: %v", err)
 	}
 
-	// Override global config for test
-	oldDataDir := config.GlobalPaths.DataDir
-	config.GlobalPaths.DataDir = tmpDir
-	defer func() { config.GlobalPaths.DataDir = oldDataDir }()
+	paths := &config.Paths{DataDir: tmpDir}
 
 	// Call getFirecrackerBinary
-	_, err := getFirecrackerBinary()
+	_, err := getFirecrackerBinary(paths)
 	if err == nil {
 		t.Error("getFirecrackerBinary() should fail when binary doesn't exist")
 	}

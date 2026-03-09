@@ -2,7 +2,11 @@
 package firecracker
 
 import (
+	"fmt"
+
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
+	"github.com/Work-Fort/Anvil/pkg/config"
+	"github.com/Work-Fort/Anvil/pkg/firecracker"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +23,13 @@ func newRemoveCmd() *cobra.Command {
 			if len(args) == 0 {
 				return cmd.Usage()
 			}
-			return cmdutil.DeleteVersion("firecracker", args[0])
+			if err := firecracker.Remove(args[0], config.GlobalPaths); err != nil {
+				return err
+			}
+			theme := config.CurrentTheme
+			fmt.Println()
+			fmt.Println(theme.SuccessMessage(fmt.Sprintf("Deleted firecracker version %s", args[0])))
+			return nil
 		},
 	}
 }
