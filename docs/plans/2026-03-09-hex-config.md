@@ -1,6 +1,6 @@
 # Config Foundation Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Commit to master. Do not push.
 
 **Goal:** Fix I/O leaks in `pkg/config`, make `Paths` and `Theme` passable as parameters,
 and establish the dependency injection pattern that all subsequent phases follow.

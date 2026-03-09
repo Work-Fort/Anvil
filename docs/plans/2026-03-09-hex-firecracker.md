@@ -1,6 +1,6 @@
 # Firecracker Domain Hex-Arch Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Commit to master. Do not push.
 
 **Goal:** Remove all I/O and config global access from `pkg/firecracker`. Same treatment
 as kernel — functions return data, accept paths, never print.

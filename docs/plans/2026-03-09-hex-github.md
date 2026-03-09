@@ -1,6 +1,6 @@
 # GitHub Client Hex-Arch Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Commit to master. Do not push.
 
 **Goal:** Make `pkg/github` injectable by accepting token and API URL as constructor
 parameters instead of reading from config globals.

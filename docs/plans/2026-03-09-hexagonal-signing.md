@@ -1,6 +1,6 @@
 # Hexagonal Architecture: Signing Domain Refactor
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Commit to master. Do not push.
 
 **Goal:** Remove interactive prompts from `pkg/signing` domain functions so the MCP server never deadlocks on password acquisition.
 
