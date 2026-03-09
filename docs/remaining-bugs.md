@@ -16,17 +16,12 @@ doesn't reflect the file write.
 
 **Impact:** MCP consumers can't verify config changes they just made.
 
-## 2. CLI `kernel versions` shows empty, MCP `kernel_versions` works
+## ~~2. CLI `kernel versions` shows empty, MCP `kernel_versions` works~~ Not a bug
 
-CLI `kernel versions` calls `ShowVersions()` which checks GitHub releases
-(empty repo — no releases published). MCP `kernel_versions` calls
-`GetLatestKernelVersion()` which checks kernel.org directly. These are
-different code paths returning different data.
-
-Not a regression — the GitHub repo has no releases. But the discrepancy
-between CLI and MCP is confusing. Consider unifying the version source.
-
-**Severity:** Low (cosmetic/UX discrepancy, not data loss)
+CLI `kernel versions` shows GitHub releases (pre-built kernel binaries).
+MCP `kernel_versions` shows kernel.org versions (source available to build).
+These are intentionally different: CLI is for downloading pre-built, MCP is
+for checking what's buildable. No GitHub releases published yet = correct.
 
 ## 3. MCP server running stale binary after rebuild
 

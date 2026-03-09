@@ -83,6 +83,9 @@ func SetConfigValue(key, valueStr string, scope ConfigScope) error {
 		}
 	}
 
+	// Update the global viper instance so subsequent reads reflect the change
+	viper.Set(key, value)
+
 	return nil
 }
 
@@ -151,6 +154,9 @@ func UnsetConfigValue(key string, scope ConfigScope) error {
 	if err := newV.WriteConfig(); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
+
+	// Re-read config to sync the global viper instance
+	_ = viper.ReadInConfig()
 
 	return nil
 }
