@@ -4,9 +4,9 @@ package init
 import (
 	"testing"
 
-	"github.com/charmbracelet/huh"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/Work-Fort/Anvil/pkg/ui"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 )
 
 func TestSigningTab_Init(t *testing.T) {

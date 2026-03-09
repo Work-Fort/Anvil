@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/ui"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestKeygenTab_Init(t *testing.T) {

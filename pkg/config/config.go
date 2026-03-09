@@ -19,11 +19,11 @@ const (
 	FirecrackerRepo = "firecracker-microvm/firecracker"
 
 	// Configuration
-	EnvPrefix        = "ANVIL" // Environment variable prefix for Viper
-	ConfigFileName   = "config"         // Config file name for XDG config dir (without extension)
-	LocalConfigFile  = "anvil" // Config file name for current directory (without extension)
-	ConfigType       = "yaml"           // Config file type
-	DefaultConfigExt = ".yaml"          // Default config file extension
+	EnvPrefix        = "ANVIL"  // Environment variable prefix for Viper
+	ConfigFileName   = "config" // Config file name for XDG config dir (without extension)
+	LocalConfigFile  = "anvil"  // Config file name for current directory (without extension)
+	ConfigType       = "yaml"   // Config file type
+	DefaultConfigExt = ".yaml"  // Default config file extension
 )
 
 // Paths holds all XDG-compliant directory paths

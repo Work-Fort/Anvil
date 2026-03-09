@@ -93,7 +93,7 @@ func TestSectionCommentsPassThrough(t *testing.T) {
 
 	// Write and verify the comment is still there.
 	var buf strings.Builder
-	if err := c.WriteTo(&buf); err != nil {
+	if err := c.Write(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(buf.String(), "# General setup") {
@@ -108,7 +108,7 @@ func TestBlankLinesPreserved(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var buf strings.Builder
-	if err := c.WriteTo(&buf); err != nil {
+	if err := c.Write(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(buf.String(), "\n\n") {
@@ -157,7 +157,7 @@ func TestSetDisabledToEnabled(t *testing.T) {
 		t.Errorf("expected 'y', got %q", v)
 	}
 	var buf strings.Builder
-	if err := c.WriteTo(&buf); err != nil {
+	if err := c.Write(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(buf.String(), "CONFIG_FOO=y") {
@@ -181,7 +181,7 @@ func TestSetEnabledToDisabled(t *testing.T) {
 		t.Errorf("expected 'n', got %q", v)
 	}
 	var buf strings.Builder
-	if err := c.WriteTo(&buf); err != nil {
+	if err := c.Write(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(buf.String(), "# CONFIG_FOO is not set") {
@@ -252,7 +252,7 @@ CONFIG_NR_CPUS=256
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var buf strings.Builder
-	if err := c.WriteTo(&buf); err != nil {
+	if err := c.Write(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if buf.String() != input {

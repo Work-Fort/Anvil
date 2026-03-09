@@ -224,7 +224,7 @@ func ValidateKeyScope(key string, scope ConfigScope) error {
 					"Hint: Use --global flag:\n"+
 					"  anvil config set --global %s <value>\n\n"+
 					"User config: ~/.config/anvil/config.yaml\n"+
-					"This setting must NOT be committed to version control.",
+					"this setting must NOT be committed to version control",
 				key,
 				key,
 			)

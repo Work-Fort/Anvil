@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/signing"
 	"github.com/Work-Fort/Anvil/pkg/ui"
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // keysDir is the repo-local directory where wizard-generated keys are stored.

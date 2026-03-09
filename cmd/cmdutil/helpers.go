@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/log"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/firecracker"
 	"github.com/Work-Fort/Anvil/pkg/github"
 	"github.com/Work-Fort/Anvil/pkg/kernel"
 	"github.com/Work-Fort/Anvil/pkg/ui"
+	"github.com/charmbracelet/log"
 	"golang.org/x/term"
 )
 

@@ -163,10 +163,10 @@ func handleKernelConfigDiff(_ context.Context, req gomcp.CallToolRequest) (*gomc
 	items := make([]map[string]string, len(entries))
 	for i, e := range entries {
 		items[i] = map[string]string{
-			"option":   "CONFIG_" + e.Name,
-			"type":     string(e.Type),
-			"value_a":  e.ValueA,
-			"value_b":  e.ValueB,
+			"option":  "CONFIG_" + e.Name,
+			"type":    string(e.Type),
+			"value_a": e.ValueA,
+			"value_b": e.ValueB,
 		}
 	}
 

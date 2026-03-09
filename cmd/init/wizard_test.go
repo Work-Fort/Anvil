@@ -4,9 +4,9 @@ package init
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/ui"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestWizardModel_Init(t *testing.T) {

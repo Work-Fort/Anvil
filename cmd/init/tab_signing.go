@@ -7,11 +7,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/log"
-	tea "github.com/charmbracelet/bubbletea"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/ui"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/log"
 )
 
 // SigningTab collects signing key metadata using huh.Form

@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/log"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/github"
 	"github.com/Work-Fort/Anvil/pkg/util"
+	"github.com/charmbracelet/log"
 )
 
 // Get gets a kernel by trying to download pre-built version first, then building from source if needed

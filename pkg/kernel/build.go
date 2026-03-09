@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/log"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/download"
 	"github.com/Work-Fort/Anvil/pkg/util"
+	"github.com/charmbracelet/log"
 )
 
 // BuildPhase represents a phase in the kernel build process
@@ -940,13 +940,13 @@ func applyKernelConfig(logger *buildLogger, opts BuildOptions, kernelSrcDir stri
 		} else {
 			// Not in repo mode: require --config flag
 			return fmt.Errorf(
-				"kernel config file required (not in repo mode)\n\n"+
-					"Either:\n"+
-					"  1. Use --config flag: anvil build-kernel --config path/to/kernel.config\n"+
-					"  2. Create anvil.yaml in repo root with:\n"+
-					"     kernels:\n"+
-					"       config:\n"+
-					"         x86_64: configs/kernel-x86_64.config\n"+
+				"kernel config file required (not in repo mode)\n\n" +
+					"Either:\n" +
+					"  1. Use --config flag: anvil build-kernel --config path/to/kernel.config\n" +
+					"  2. Create anvil.yaml in repo root with:\n" +
+					"     kernels:\n" +
+					"       config:\n" +
+					"         x86_64: configs/kernel-x86_64.config\n" +
 					"         aarch64: configs/kernel-aarch64.config",
 			)
 		}

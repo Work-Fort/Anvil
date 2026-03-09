@@ -198,7 +198,7 @@ func validateConfigFile(configDir string, scope ConfigScope) error {
 					"repo config file not found: %s\n\n"+
 						"Required keys for repo mode:\n"+
 						"  - %s\n\n"+
-						"Create a anvil.yaml file in your repository root.",
+						"create an anvil.yaml file in your repository root",
 					configPath,
 					strings.Join(requiredKeys, "\n  - "),
 				)

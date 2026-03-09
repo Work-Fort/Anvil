@@ -196,9 +196,9 @@ func handleFirecrackerCreateRootfs(_ context.Context, req gomcp.CallToolRequest)
 	}
 
 	return jsonResult(map[string]any{
-		"output":         output,
-		"size_mb":        sizeMB,
-		"inject_binary":  inject,
-		"status":         "created",
+		"output":        output,
+		"size_mb":       sizeMB,
+		"inject_binary": inject,
+		"status":        "created",
 	})
 }

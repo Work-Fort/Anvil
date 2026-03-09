@@ -80,7 +80,7 @@ func handleSigningKeyInfo(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.Ca
 
 	return jsonResult(map[string]any{
 		"has_key": true,
-		"keys":   keyList,
+		"keys":    keyList,
 	})
 }
 

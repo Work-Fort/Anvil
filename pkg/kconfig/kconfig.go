@@ -165,8 +165,8 @@ func (c *Config) List(filter string) []Option {
 	return opts
 }
 
-// WriteTo writes the config to w, preserving original structure.
-func (c *Config) WriteTo(w io.Writer) error {
+// Write writes the config to w, preserving original structure.
+func (c *Config) Write(w io.Writer) error {
 	bw := bufio.NewWriter(w)
 	for i, l := range c.lines {
 		var line string
@@ -195,7 +195,7 @@ func (c *Config) WriteFile(path string) error {
 		return fmt.Errorf("creating config file: %w", err)
 	}
 	defer f.Close()
-	if err := c.WriteTo(f); err != nil {
+	if err := c.Write(f); err != nil {
 		return fmt.Errorf("writing config file: %w", err)
 	}
 	return nil

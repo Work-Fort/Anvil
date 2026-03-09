@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Work-Fort/Anvil/pkg/config"
+	"github.com/Work-Fort/Anvil/pkg/kernel"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -20,8 +22,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"github.com/Work-Fort/Anvil/pkg/config"
-	"github.com/Work-Fort/Anvil/pkg/kernel"
 )
 
 // BuildKernelPhase represents a phase in the kernel build process

@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/log"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/github"
 	"github.com/Work-Fort/Anvil/pkg/util"
+	"github.com/charmbracelet/log"
 )
 
 // Download downloads a Firecracker binary
