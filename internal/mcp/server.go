@@ -5,8 +5,12 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// serverVersion holds the version string for use by tools like get_context.
+var serverVersion string
+
 // NewServer creates the Anvil MCP server with all tools registered.
 func NewServer(version string) *server.MCPServer {
+	serverVersion = version
 	s := server.NewMCPServer(
 		"anvil",
 		version,

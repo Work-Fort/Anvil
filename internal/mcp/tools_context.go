@@ -89,8 +89,14 @@ func buildContextResponse() map[string]any {
 		mode = "repo"
 	}
 
+	version := serverVersion
+	if version == "" {
+		version = "dev"
+	}
+
 	result := map[string]any{
-		"mode": mode,
+		"version": version,
+		"mode":    mode,
 		"paths": map[string]any{
 			"data_dir":         config.GlobalPaths.DataDir,
 			"cache_dir":        config.GlobalPaths.CacheDir,
