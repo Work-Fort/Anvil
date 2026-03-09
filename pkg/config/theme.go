@@ -43,16 +43,16 @@ var CurrentTheme = Theme{
 // --- Color getters (backward compat — thin wrappers over fields) ---
 
 func (t Theme) GetPrimaryColor() color.Color   { return t.Primary }
-func (t Theme) GetSecondaryColor() color.Color  { return t.Secondary }
-func (t Theme) GetMutedColor() color.Color      { return t.Muted }
-func (t Theme) GetAccentColor() color.Color     { return t.Accent }
-func (t Theme) GetTextColor() color.Color       { return t.Text }
-func (t Theme) GetTextDimColor() color.Color    { return t.TextDim }
-func (t Theme) GetBgDarkColor() color.Color     { return t.BgDark }
-func (t Theme) GetSuccessColor() color.Color    { return t.Success }
-func (t Theme) GetInfoColor() color.Color       { return t.Info }
-func (t Theme) GetWarningColor() color.Color    { return t.Warning }
-func (t Theme) GetErrorColor() color.Color      { return t.Error }
+func (t Theme) GetSecondaryColor() color.Color { return t.Secondary }
+func (t Theme) GetMutedColor() color.Color     { return t.Muted }
+func (t Theme) GetAccentColor() color.Color    { return t.Accent }
+func (t Theme) GetTextColor() color.Color      { return t.Text }
+func (t Theme) GetTextDimColor() color.Color   { return t.TextDim }
+func (t Theme) GetBgDarkColor() color.Color    { return t.BgDark }
+func (t Theme) GetSuccessColor() color.Color   { return t.Success }
+func (t Theme) GetInfoColor() color.Color      { return t.Info }
+func (t Theme) GetWarningColor() color.Color   { return t.Warning }
+func (t Theme) GetErrorColor() color.Color     { return t.Error }
 
 // --- Style builders ---
 

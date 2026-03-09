@@ -2,12 +2,12 @@
 package init
 
 import (
-	"github.com/Work-Fort/Anvil/pkg/config"
-	initpkg "github.com/Work-Fort/Anvil/pkg/init"
-	"github.com/Work-Fort/Anvil/pkg/ui"
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/Work-Fort/Anvil/pkg/config"
+	initpkg "github.com/Work-Fort/Anvil/pkg/init"
+	"github.com/Work-Fort/Anvil/pkg/ui"
 )
 
 // Custom messages for async file generation
@@ -50,7 +50,7 @@ func (t *SummaryTab) Init() tea.Cmd {
 }
 
 // Update implements TabModel interface
-func (t *SummaryTab) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (t *SummaryTab) Update(msg tea.Msg) (*SummaryTab, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		t.width = msg.Width
@@ -77,7 +77,7 @@ func (t *SummaryTab) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return t, cmd
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle user input after generation
 		if t.complete {
 			if t.err != nil {

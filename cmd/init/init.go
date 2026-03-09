@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/signing"
-	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -142,9 +142,18 @@ func validatePreFlight() error {
 	return nil
 }
 
-// runInteractive launches the Bubble Tea TUI wizard
+// runInteractive collects signing settings via standalone huh form,
+// then launches the bubbletea v2 wizard for key generation and summary.
 func runInteractive() error {
-	p := tea.NewProgram(NewWizardModel(), tea.WithAltScreen())
+	// Phase 1: Collect signing config (huh runs its own v1 TUI)
+	settings, err := collectSigningSettings()
+	if err != nil {
+		return fmt.Errorf("signing config: %w", err)
+	}
+	settings.ArchiveLocation = flagArchiveLocation
+
+	// Phase 2: Key generation + summary in v2 wizard
+	p := tea.NewProgram(NewWizardModel(settings))
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("wizard failed: %w", err)
 	}

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/ui"
-	tea "charm.land/bubbletea/v2"
 )
 
 func TestKeygenTab_Init(t *testing.T) {
@@ -27,8 +27,6 @@ func TestKeygenTab_Init(t *testing.T) {
 		t.Fatal("Init() should return a command")
 	}
 
-	// Init should not immediately complete - it should return generateKeyMsg
-	// The tab should not be marked as complete yet
 	if tab.complete {
 		t.Error("Init() should not immediately set complete to true")
 	}
@@ -49,33 +47,14 @@ func TestKeygenTab_IsComplete(t *testing.T) {
 		err      error
 		want     bool
 	}{
-		{
-			name:     "complete when complete and no error",
-			complete: true,
-			err:      nil,
-			want:     true,
-		},
-		{
-			name:     "not complete when not complete",
-			complete: false,
-			err:      nil,
-			want:     false,
-		},
-		{
-			name:     "not complete when error exists",
-			complete: true,
-			err:      fmt.Errorf("test error"),
-			want:     false,
-		},
+		{"complete when complete and no error", true, nil, true},
+		{"not complete when not complete", false, nil, false},
+		{"not complete when error exists", true, fmt.Errorf("test error"), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tab := &KeygenTab{
-				complete: tt.complete,
-				err:      tt.err,
-			}
-
+			tab := &KeygenTab{complete: tt.complete, err: tt.err}
 			if got := tab.IsComplete(); got != tt.want {
 				t.Errorf("IsComplete() = %v, want %v", got, tt.want)
 			}
@@ -90,33 +69,14 @@ func TestKeygenTab_GetState(t *testing.T) {
 		err      error
 		want     ui.TabState
 	}{
-		{
-			name:     "returns TabComplete when complete and no error",
-			complete: true,
-			err:      nil,
-			want:     ui.TabComplete,
-		},
-		{
-			name:     "returns TabError when error exists",
-			complete: true,
-			err:      fmt.Errorf("test error"),
-			want:     ui.TabError,
-		},
-		{
-			name:     "returns TabActive when not complete",
-			complete: false,
-			err:      nil,
-			want:     ui.TabActive,
-		},
+		{"returns TabComplete when complete and no error", true, nil, ui.TabComplete},
+		{"returns TabError when error exists", true, fmt.Errorf("test error"), ui.TabError},
+		{"returns TabActive when not complete", false, nil, ui.TabActive},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tab := &KeygenTab{
-				complete: tt.complete,
-				err:      tt.err,
-			}
-
+			tab := &KeygenTab{complete: tt.complete, err: tt.err}
 			if got := tab.GetState(); got != tt.want {
 				t.Errorf("GetState() = %v, want %v", got, tt.want)
 			}
@@ -129,22 +89,17 @@ func TestKeygenTab_Update_WindowSize(t *testing.T) {
 	tab := NewKeygenTab(settings)
 
 	msg := tea.WindowSizeMsg{Width: 100, Height: 50}
-	updatedModel, cmd := tab.Update(msg)
+	updated, cmd := tab.Update(msg)
 
 	if cmd != nil {
 		t.Error("WindowSizeMsg should return nil command")
 	}
 
-	updatedTab, ok := updatedModel.(*KeygenTab)
-	if !ok {
-		t.Fatal("Update should return *KeygenTab")
+	if updated.width != 100 {
+		t.Errorf("width = %d, want 100", updated.width)
 	}
-
-	if updatedTab.width != 100 {
-		t.Errorf("width = %d, want 100", updatedTab.width)
-	}
-	if updatedTab.height != 50 {
-		t.Errorf("height = %d, want 50", updatedTab.height)
+	if updated.height != 50 {
+		t.Errorf("height = %d, want 50", updated.height)
 	}
 }
 
@@ -158,24 +113,18 @@ func TestKeygenTab_Update_GenerateKey(t *testing.T) {
 	}
 	tab := NewKeygenTab(settings)
 
-	// Send generateKeyMsg
 	msg := generateKeyMsg{}
-	updatedModel, cmd := tab.Update(msg)
+	updated, cmd := tab.Update(msg)
 
 	if cmd == nil {
 		t.Fatal("Update() should return a command for generateKeyMsg")
 	}
 
-	updatedTab, ok := updatedModel.(*KeygenTab)
-	if !ok {
-		t.Fatal("Update should return *KeygenTab")
-	}
-
-	if !updatedTab.generating {
+	if !updated.generating {
 		t.Error("generating should be set to true when generateKeyMsg is received")
 	}
 
-	if updatedTab.complete {
+	if updated.complete {
 		t.Error("complete should not be set until keyGeneratedMsg is processed")
 	}
 }
@@ -191,39 +140,32 @@ func TestKeygenTab_Update_KeyGenerated_Success(t *testing.T) {
 	tab := NewKeygenTab(settings)
 	tab.generating = true
 
-	// Send keyGeneratedMsg with success
 	msg := keyGeneratedMsg{
 		keyPath:       "/path/to/private.key",
 		publicKeyPath: "/path/to/public.key",
 		err:           nil,
 	}
-	updatedModel, cmd := tab.Update(msg)
+	updated, cmd := tab.Update(msg)
 
 	if cmd == nil {
 		t.Fatal("Update() should return commands for keyGeneratedMsg")
 	}
 
-	updatedTab, ok := updatedModel.(*KeygenTab)
-	if !ok {
-		t.Fatal("Update should return *KeygenTab")
-	}
-
-	if !updatedTab.complete {
+	if !updated.complete {
 		t.Error("complete should be true after successful keyGeneratedMsg")
 	}
 
-	if updatedTab.err != nil {
-		t.Errorf("err should be nil, got: %v", updatedTab.err)
+	if updated.err != nil {
+		t.Errorf("err should be nil, got: %v", updated.err)
 	}
 
-	// Verify settings were updated
-	if updatedTab.settings.KeyPath != "/path/to/private.key" {
-		t.Errorf("KeyPath = %q, want %q", updatedTab.settings.KeyPath, "/path/to/private.key")
+	if updated.settings.KeyPath != "/path/to/private.key" {
+		t.Errorf("KeyPath = %q, want %q", updated.settings.KeyPath, "/path/to/private.key")
 	}
-	if updatedTab.settings.PublicKeyPath != "/path/to/public.key" {
-		t.Errorf("PublicKeyPath = %q, want %q", updatedTab.settings.PublicKeyPath, "/path/to/public.key")
+	if updated.settings.PublicKeyPath != "/path/to/public.key" {
+		t.Errorf("PublicKeyPath = %q, want %q", updated.settings.PublicKeyPath, "/path/to/public.key")
 	}
-	if !updatedTab.settings.KeyGenerated {
+	if !updated.settings.KeyGenerated {
 		t.Error("KeyGenerated should be true")
 	}
 }
@@ -239,38 +181,27 @@ func TestKeygenTab_Update_KeyGenerated_Error(t *testing.T) {
 	tab := NewKeygenTab(settings)
 	tab.generating = true
 
-	// Send keyGeneratedMsg with error
 	testErr := fmt.Errorf("key generation failed")
-	msg := keyGeneratedMsg{
-		keyPath:       "",
-		publicKeyPath: "",
-		err:           testErr,
-	}
-	updatedModel, cmd := tab.Update(msg)
+	msg := keyGeneratedMsg{err: testErr}
+	updated, cmd := tab.Update(msg)
 
 	if cmd != nil {
 		t.Error("Update() should return nil command when error occurs")
 	}
 
-	updatedTab, ok := updatedModel.(*KeygenTab)
-	if !ok {
-		t.Fatal("Update should return *KeygenTab")
-	}
-
-	if !updatedTab.complete {
+	if !updated.complete {
 		t.Error("complete should be true even when error occurs")
 	}
 
-	if updatedTab.err == nil {
+	if updated.err == nil {
 		t.Error("err should be set when keyGeneratedMsg contains error")
 	}
 
-	if updatedTab.err != testErr {
-		t.Errorf("err = %v, want %v", updatedTab.err, testErr)
+	if updated.err != testErr {
+		t.Errorf("err = %v, want %v", updated.err, testErr)
 	}
 
-	// Verify settings were not updated
-	if updatedTab.settings.KeyGenerated {
+	if updated.settings.KeyGenerated {
 		t.Error("KeyGenerated should be false when error occurs")
 	}
 }
@@ -300,15 +231,12 @@ func TestKeygenTab_View_Complete(t *testing.T) {
 
 	view := tab.View()
 
-	// Check for key paths
 	if !strings.Contains(view, "/path/to/private.key") {
 		t.Error("View() should contain private key path")
 	}
 	if !strings.Contains(view, "/path/to/public.key") {
 		t.Error("View() should contain public key path")
 	}
-
-	// Should contain checkmark
 	if !strings.Contains(view, "✓") {
 		t.Error("View() should contain checkmark for completed generation")
 	}
@@ -348,23 +276,16 @@ func TestKeygenTab_AsyncFlow(t *testing.T) {
 	}
 
 	// Step 2: Send generateKeyMsg
-	genModel, genCmd := tab.Update(generateKeyMsg{})
+	genTab, genCmd := tab.Update(generateKeyMsg{})
 	if genCmd == nil {
 		t.Fatal("generateKeyMsg should return a command")
-	}
-
-	genTab, ok := genModel.(*KeygenTab)
-	if !ok {
-		t.Fatal("Update should return *KeygenTab")
 	}
 
 	if !genTab.generating {
 		t.Error("Tab should be marked as generating")
 	}
 
-	// Step 3: Execute command to get keyGeneratedMsg (simulate success)
-	// In real implementation, this would call signing.GenerateKey
-	// For test, we simulate the successful response
+	// Step 3: Simulate successful key generation response
 	keyGenMsg := keyGeneratedMsg{
 		keyPath:       "/test/private.key",
 		publicKeyPath: "/test/public.key",
@@ -372,17 +293,11 @@ func TestKeygenTab_AsyncFlow(t *testing.T) {
 	}
 
 	// Step 4: Send keyGeneratedMsg
-	finalModel, finalCmd := genTab.Update(keyGenMsg)
+	finalTab, finalCmd := genTab.Update(keyGenMsg)
 	if finalCmd == nil {
 		t.Fatal("keyGeneratedMsg should return commands")
 	}
 
-	finalTab, ok := finalModel.(*KeygenTab)
-	if !ok {
-		t.Fatal("Update should return *KeygenTab")
-	}
-
-	// Verify final state
 	if !finalTab.complete {
 		t.Error("Tab should be marked as complete")
 	}

@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/signing"
 	"github.com/Work-Fort/Anvil/pkg/ui"
-	"charm.land/bubbles/v2/spinner"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 )
 
 // keysDir is the repo-local directory where wizard-generated keys are stored.
@@ -58,7 +58,7 @@ func (t *KeygenTab) Init() tea.Cmd {
 }
 
 // Update implements TabModel interface
-func (t *KeygenTab) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (t *KeygenTab) Update(msg tea.Msg) (*KeygenTab, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		t.width = msg.Width
@@ -82,7 +82,7 @@ func (t *KeygenTab) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Send settings update and completion notification
 			return t, tea.Batch(
 				func() tea.Msg { return SettingsUpdateMsg{Settings: *t.settings} },
-				func() tea.Msg { return TabCompleteMsg{TabIndex: 1} },
+				func() tea.Msg { return TabCompleteMsg{TabIndex: 0} },
 			)
 		}
 		return t, nil

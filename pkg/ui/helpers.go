@@ -2,10 +2,12 @@
 package ui
 
 import (
-	"github.com/Work-Fort/Anvil/pkg/config"
+	"fmt"
+	"image/color"
+
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/huh"
 	"charm.land/lipgloss/v2"
+	"github.com/Work-Fort/Anvil/pkg/config"
 )
 
 // LayoutDimensions holds calculated dimensions for a TUI layout
@@ -49,16 +51,7 @@ func CalculateSplitPaneDimensions(terminalWidth, terminalHeight int) LayoutDimen
 
 // CalculateContentHeight calculates available content height with graceful degradation
 // Uses named constants pattern from cli/AGENTS.md to avoid magic numbers
-//
-// Parameters:
-//   - terminalHeight: total terminal height
-//   - required: map of required UI elements and their line counts
-//   - optional: map of optional UI elements and their line counts
-//   - minContentHeight: minimum acceptable content height
-//
-// Returns dimensions with ShowInstructions and BlankLineCount set based on available space
 func CalculateContentHeight(terminalHeight int, required, optional map[string]int, minContentHeight int) LayoutDimensions {
-	// Calculate overheads
 	requiredOverhead := 0
 	for _, lines := range required {
 		requiredOverhead += lines
@@ -77,24 +70,19 @@ func CalculateContentHeight(terminalHeight int, required, optional map[string]in
 		BlankLineCount:   0,
 	}
 
-	// Determine what optional elements fit
 	if availableHeight >= minContentHeight+optionalOverhead {
-		// Enough room for everything
 		dims.ShowInstructions = true
 		dims.BlankLineCount = optional["blankLines"]
 		dims.ContentHeight = availableHeight - optionalOverhead
 	} else if availableHeight >= minContentHeight+optional["instructionsLines"]+1 {
-		// Drop blank lines, keep instructions
 		dims.ShowInstructions = true
 		dims.BlankLineCount = 1
 		dims.ContentHeight = availableHeight - optional["instructionsLines"] - 1
 	} else if availableHeight >= minContentHeight {
-		// Drop everything optional
 		dims.ShowInstructions = false
 		dims.BlankLineCount = 0
 		dims.ContentHeight = availableHeight
 	} else {
-		// Below minimum - enforce minimum anyway
 		dims.ContentHeight = minContentHeight
 	}
 
@@ -102,8 +90,7 @@ func CalculateContentHeight(terminalHeight int, required, optional map[string]in
 }
 
 // RenderCenteredModal renders a modal overlay centered in the terminal
-// Used for progress indicators, confirmations, etc.
-func RenderCenteredModal(content string, width, height int, borderColor lipgloss.Color, modalWidth int) string {
+func RenderCenteredModal(content string, width, height int, borderColor color.Color, modalWidth int) string {
 	modal := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
@@ -116,7 +103,7 @@ func RenderCenteredModal(content string, width, height int, borderColor lipgloss
 		lipgloss.Center, lipgloss.Center,
 		modal,
 		lipgloss.WithWhitespaceChars(" "),
-		lipgloss.WithWhitespaceForeground(lipgloss.Color("0")),
+		lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("0"))),
 	)
 }
 
@@ -157,7 +144,7 @@ func RenderProgressModal(title, statusMessage, indicator, helpText string, width
 
 // CreatePaneStyle creates a styled pane based on active state
 // Uses ThickBorder for active, NormalBorder for inactive (both 2 chars wide)
-func CreatePaneStyle(isActive bool, accentColor, mutedColor lipgloss.Color, contentWidth int) lipgloss.Style {
+func CreatePaneStyle(isActive bool, accentColor, mutedColor color.Color, contentWidth int) lipgloss.Style {
 	if isActive {
 		return lipgloss.NewStyle().
 			Border(lipgloss.ThickBorder()).
@@ -178,50 +165,32 @@ func FillTerminal(content string, width, height int) string {
 	return lipgloss.Place(width, height, lipgloss.Left, lipgloss.Top, content)
 }
 
-// ConfirmationForm wraps a huh.Form for reusable Yes/No confirmations
+// ConfirmationForm provides a simple Y/N confirmation prompt for bubbletea v2.
 type ConfirmationForm struct {
-	form *huh.Form
-	key  string
+	title       string
+	description string
+	affirmative string
+	negative    string
 }
 
-// NewConfirmationForm creates a new confirmation form with Y/N quick keys
-// key: the field key to retrieve the result
-// title: the main question text
-// description: optional explanation text
-// affirmative: text for "Yes" option
-// negative: text for "No" option
-func NewConfirmationForm(key, title, description, affirmative, negative string) *ConfirmationForm {
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().
-				Key(key).
-				Title(title).
-				Description(description).
-				Affirmative(affirmative).
-				Negative(negative),
-		),
-	)
-
+// NewConfirmationForm creates a new confirmation form with Y/N quick keys.
+// The key parameter is kept for API compatibility but unused in the v2 implementation.
+func NewConfirmationForm(_, title, description, affirmative, negative string) *ConfirmationForm {
 	return &ConfirmationForm{
-		form: form,
-		key:  key,
+		title:       title,
+		description: description,
+		affirmative: affirmative,
+		negative:    negative,
 	}
 }
 
-// Init initializes the form and returns the initial command
-func (cf *ConfirmationForm) Init() tea.Cmd {
-	return cf.form.Init()
-}
+// Init returns nil — no async initialization needed.
+func (cf *ConfirmationForm) Init() tea.Cmd { return nil }
 
-// Update handles form updates with Y/N/ESC quick key support
-// Returns: (confirmed bool, shouldProceed bool, model, cmd)
-// - If Y pressed: (true, true, ...)
-// - If N pressed: (false, true, ...)
-// - If ESC pressed: (false, false, ...) - cancelled
-// - If form completed: (result, true, ...)
-// - Otherwise: (false, false, ...) - still collecting input
+// Update handles Y/N/ESC keypresses.
+// Returns: (confirmed bool, shouldProceed bool, cmd)
 func (cf *ConfirmationForm) Update(msg tea.Msg) (bool, bool, tea.Cmd) {
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 		switch keyMsg.String() {
 		case "y", "Y":
 			return true, true, nil
@@ -231,20 +200,21 @@ func (cf *ConfirmationForm) Update(msg tea.Msg) (bool, bool, tea.Cmd) {
 			return false, false, nil
 		}
 	}
-
-	form, cmd := cf.form.Update(msg)
-	cf.form = form.(*huh.Form)
-
-	// Check if form is complete (arrow keys + enter)
-	if cf.form.State == huh.StateCompleted {
-		confirmed := cf.form.GetBool(cf.key)
-		return confirmed, true, cmd
-	}
-
-	return false, false, cmd
+	return false, false, nil
 }
 
-// View renders the form
+// View renders the confirmation prompt with theme styling.
 func (cf *ConfirmationForm) View() string {
-	return cf.form.View()
+	theme := config.CurrentTheme
+
+	title := theme.PrimaryStyle().Bold(true).Render(cf.title)
+
+	desc := ""
+	if cf.description != "" {
+		desc = "\n" + theme.SubtleStyle().Render(cf.description)
+	}
+
+	options := fmt.Sprintf("\n\n  [Y] %s  [N] %s  [ESC] Cancel", cf.affirmative, cf.negative)
+
+	return lipgloss.JoinVertical(lipgloss.Left, title, desc, theme.SubtleStyle().Render(options))
 }

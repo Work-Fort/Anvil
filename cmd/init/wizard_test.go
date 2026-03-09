@@ -2,19 +2,31 @@
 package init
 
 import (
+	"fmt"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	initpkg "github.com/Work-Fort/Anvil/pkg/init"
 	"github.com/Work-Fort/Anvil/pkg/ui"
-	tea "charm.land/bubbletea/v2"
 )
 
-func TestWizardModel_Init(t *testing.T) {
-	m := NewWizardModel()
+func newTestSettings() *initpkg.InitSettings {
+	return &initpkg.InitSettings{
+		KeyName:       "Test User",
+		KeyEmail:      "test@example.com",
+		KeyExpiry:     "1y",
+		KeyFormat:     "armored",
+		HistoryFormat: "armored",
+		KeyPassword:   "testpass",
+	}
+}
 
-	// Should create 3 tabs
-	if len(m.tabs) != 3 {
-		t.Errorf("expected 3 tabs, got %d", len(m.tabs))
+func TestWizardModel_Init(t *testing.T) {
+	m := NewWizardModel(newTestSettings())
+
+	// Should create 2 tabs (Key Gen + Summary)
+	if len(m.tabs) != 2 {
+		t.Errorf("expected 2 tabs, got %d", len(m.tabs))
 	}
 
 	// Tab 0 should be active initially
@@ -36,7 +48,7 @@ func TestWizardModel_Init(t *testing.T) {
 }
 
 func TestWizardModel_TabCompleteMsg(t *testing.T) {
-	m := NewWizardModel()
+	m := NewWizardModel(newTestSettings())
 
 	// Simulate tab 0 completing
 	msg := TabCompleteMsg{TabIndex: 0}
@@ -59,7 +71,7 @@ func TestWizardModel_TabCompleteMsg(t *testing.T) {
 }
 
 func TestWizardModel_SettingsUpdateMsg(t *testing.T) {
-	m := NewWizardModel()
+	m := NewWizardModel(newTestSettings())
 
 	// Update settings from tab
 	settings := initpkg.InitSettings{
@@ -82,7 +94,7 @@ func TestWizardModel_SettingsUpdateMsg(t *testing.T) {
 }
 
 func TestWizardModel_WindowSizeMsg(t *testing.T) {
-	m := NewWizardModel()
+	m := NewWizardModel(newTestSettings())
 
 	msg := tea.WindowSizeMsg{Width: 120, Height: 40}
 	updatedModel, _ := m.Update(msg)
@@ -99,21 +111,19 @@ func TestWizardModel_WindowSizeMsg(t *testing.T) {
 }
 
 func TestWizardModel_Quitting(t *testing.T) {
-	m := NewWizardModel()
+	m := NewWizardModel(newTestSettings())
 
-	// Navigate to last tab and complete it
-	for i := 0; i < 2; i++ {
-		msg := TabCompleteMsg{TabIndex: i}
-		updatedModel, _ := m.Update(msg)
-		m = updatedModel.(WizardModel)
-	}
+	// Navigate to last tab (tab 1) and complete tab 0
+	msg := TabCompleteMsg{TabIndex: 0}
+	updatedModel, _ := m.Update(msg)
+	m = updatedModel.(WizardModel)
 
 	// Mark final tab as complete
-	m.tabs[2].State = ui.TabComplete
+	m.tabs[1].State = ui.TabComplete
 
 	// Press 'q' should quit
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
-	updatedModel, cmd := m.Update(msg)
+	keyMsg := tea.KeyPressMsg{Code: 'q', Text: "q"}
+	updatedModel, cmd := m.Update(keyMsg)
 	m = updatedModel.(WizardModel)
 
 	// Should be quitting
@@ -163,7 +173,7 @@ func TestWizardModel_SettingsMerge(t *testing.T) {
 }
 
 func TestWizardModel_View(t *testing.T) {
-	m := NewWizardModel()
+	m := NewWizardModel(newTestSettings())
 
 	// Set dimensions
 	m.width = 120
@@ -171,25 +181,25 @@ func TestWizardModel_View(t *testing.T) {
 
 	// Should not panic
 	view := m.View()
-	if view == "" {
+	if view.Content == "" {
 		t.Error("expected non-empty view")
 	}
 
 	// Before dimensions are set, should show "Initializing..."
-	m2 := NewWizardModel()
+	m2 := NewWizardModel(newTestSettings())
 	view2 := m2.View()
-	if view2 != "Initializing..." {
-		t.Errorf("expected 'Initializing...', got %s", view2)
+	if view2.Content != "Initializing..." {
+		t.Errorf("expected 'Initializing...', got %s", view2.Content)
 	}
 }
 
 func TestWizardModel_TabErrorMsg(t *testing.T) {
-	m := NewWizardModel()
+	m := NewWizardModel(newTestSettings())
 
 	// Simulate tab error
 	msg := TabErrorMsg{
 		TabIndex: 1,
-		Error:    tea.ErrProgramKilled,
+		Error:    fmt.Errorf("test error"),
 	}
 
 	updatedModel, _ := m.Update(msg)
@@ -207,18 +217,17 @@ func TestWizardModel_TabErrorMsg(t *testing.T) {
 }
 
 func TestWizardModel_DelegateToActiveTab(t *testing.T) {
-	m := NewWizardModel()
+	m := NewWizardModel(newTestSettings())
 
 	// Set dimensions first so tabs can process messages
 	m.width = 120
 	m.height = 40
 
 	// Send a message that should be handled by the active tab
-	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	msg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(WizardModel)
 
-	// The configs tab auto-completes immediately, so activeTab advances to 1
-	// The test verifies delegation is working
+	// The test verifies delegation is working without panic
 	_ = m
 }

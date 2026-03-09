@@ -13,14 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Work-Fort/Anvil/pkg/config"
-	"github.com/Work-Fort/Anvil/pkg/kernel"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/Work-Fort/Anvil/pkg/config"
+	"github.com/Work-Fort/Anvil/pkg/kernel"
 	"github.com/charmbracelet/log"
 )
 
@@ -217,10 +217,10 @@ func NewBuildKernelWizard(arch, verificationLevel, configFile string, forceRebui
 	l.SetShowHelp(false)
 
 	// Create progress bar with theme colors
-	prog := progress.New(progress.WithGradient(theme.Secondary, theme.Primary))
+	prog := progress.New(progress.WithColors(theme.Primary, theme.Secondary))
 
 	// Create viewport for scrollable build output
-	vp := viewport.New(0, 0)
+	vp := viewport.New()
 
 	return &BuildKernelWizard{
 		tabs: []Tab{
@@ -346,7 +346,7 @@ func (m *BuildKernelWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Check for ESC to cancel
-		if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == "esc" {
 			log.Debugf("User cancelled installation")
 			m.confirmingInstall = false
 			return m, nil
@@ -383,14 +383,14 @@ func (m *BuildKernelWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.versionList.SetSize(dims.PaneContentWidth, contentHeight)
 
 		// Update viewport size for build output (use full content area)
-		m.viewport.Width = dims.PaneContentWidth
-		m.viewport.Height = contentHeight
+		m.viewport.SetWidth(dims.PaneContentWidth)
+		m.viewport.SetHeight(contentHeight)
 		m.viewportReady = true
 
-		log.Debugf("BuildKernelWizard WindowSize: %dx%d, contentHeight=%d, viewportSize=%dx%d", m.width, m.height, contentHeight, m.viewport.Width, m.viewport.Height)
+		log.Debugf("BuildKernelWizard WindowSize: %dx%d, contentHeight=%d, viewportSize=%dx%d", m.width, m.height, contentHeight, m.viewport.Width(), m.viewport.Height())
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			// If confirming install, cancel the confirmation
@@ -725,8 +725,8 @@ func (m *BuildKernelWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case progress.FrameMsg:
 		// Animate progress bar
-		progressModel, cmd := m.progressBar.Update(msg)
-		m.progressBar = progressModel.(progress.Model)
+		var cmd tea.Cmd
+		m.progressBar, cmd = m.progressBar.Update(msg)
 		return m, cmd
 
 	case InstallKernelMsg:
@@ -1035,13 +1035,13 @@ func waitForBuildOutput(outputChan chan string, doneChan chan error, progressCha
 }
 
 // View renders the wizard
-func (m *BuildKernelWizard) View() string {
+func (m *BuildKernelWizard) View() tea.View {
 	if m.quitting {
-		return ""
+		return tea.NewView("")
 	}
 
 	if m.width == 0 || m.height == 0 {
-		return "Initializing..."
+		return tea.NewView("Initializing...")
 	}
 
 	// Show loading screen when loading cached build
@@ -1061,7 +1061,9 @@ func (m *BuildKernelWizard) View() string {
 			loadingMsg,
 		)
 
-		return lipgloss.JoinVertical(lipgloss.Left, header, "", content)
+		v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, header, "", content))
+		v.AltScreen = true
+		return v
 	}
 
 	theme := config.CurrentTheme
@@ -1135,10 +1137,14 @@ func (m *BuildKernelWizard) View() string {
 		formWidth := lipgloss.Width(constrainedForm)
 		formHeight := lipgloss.Height(constrainedForm)
 		log.Debugf("BuildKernelWizard confirm modal: terminal=%dx%d, form=%dx%d", m.width, m.height, formWidth, formHeight)
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, constrainedForm, lipgloss.WithWhitespaceChars(" "), lipgloss.WithWhitespaceForeground(lipgloss.Color("0")))
+		v := tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, constrainedForm, lipgloss.WithWhitespaceChars(" "), lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("0")))))
+		v.AltScreen = true
+		return v
 	}
 
-	return baseView
+	v := tea.NewView(baseView)
+	v.AltScreen = true
+	return v
 }
 
 // getPhaseContent returns the content for a given phase
@@ -1482,7 +1488,7 @@ func (m *BuildKernelWizard) installKernel(setAsDefault bool) tea.Cmd {
 // This handles the ENTIRE build process: selection + build + progress
 func RunBuildKernelWizard(arch, verificationLevel, configFile string, forceRebuild bool) error {
 	m := NewBuildKernelWizard(arch, verificationLevel, configFile, forceRebuild)
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m)
 
 	finalModel, err := p.Run()
 	if err != nil {
