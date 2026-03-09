@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Work-Fort/Anvil/pkg/config"
 	"libguestfs.org/guestfs"
 )
 
@@ -32,7 +31,6 @@ type CreateOptions struct {
 	SizeMB         int
 	AlpineVersion  string            // e.g., "3.23"
 	AlpinePatch    string            // e.g., "3"
-	Interactive    bool              // Whether to show TUI
 	Writer         io.Writer         // Optional: custom writer for output (for TUI streaming)
 	PhaseCallback  func(CreatePhase) // Optional: callback for phase transitions
 	StatsCallback  func(CreateStats) // Optional: callback for final statistics
@@ -115,10 +113,11 @@ done
 func Create(opts CreateOptions) error {
 	startTime := time.Now()
 
-	// Set defaults
+	// Validate required fields
 	if opts.OutputPath == "" {
-		opts.OutputPath = filepath.Join(config.GlobalPaths.DataDir, "alpine-rootfs.ext4")
+		return fmt.Errorf("output path is required")
 	}
+	// Set defaults
 	if opts.SizeMB == 0 {
 		opts.SizeMB = 512 // 512MB like frontier
 	}
