@@ -13,7 +13,7 @@ embedded TUI/stdin password acquisition that deadlocked the MCP server.
 Passwords are now parameters — CLI acquires via TUI/env/stdin, MCP reads
 from env var.
 
-## 2. Config Foundation
+## 2. Config Foundation ✅
 
 [Plan](plans/2026-03-09-hex-config.md)
 
@@ -22,7 +22,7 @@ injection pattern: domain functions accept `*config.Paths` and `config.Theme`
 as parameters instead of accessing globals. Document the pattern for
 subsequent phases.
 
-## 3. Kernel Domain
+## 3. Kernel Domain ✅
 
 [Plan](plans/2026-03-09-hex-kernel.md)
 
@@ -30,7 +30,7 @@ Remove I/O from `pkg/kernel`. `List()` and `ShowVersions()` return data
 instead of printing. Remove `Interactive` flag from `BuildOptions`. All
 functions accept `*config.Paths` parameter. Remove theme dependency.
 
-## 4. Firecracker Domain
+## 4. Firecracker Domain ✅
 
 [Plan](plans/2026-03-09-hex-firecracker.md)
 
@@ -38,7 +38,7 @@ Same treatment as kernel — `List()`, `Set()`, `ShowVersions()` return data
 instead of printing (47+ fmt.Print calls removed). All functions accept
 `*config.Paths`. Remove theme dependency.
 
-## 5. UI/Theme Extraction
+## 5. UI/Theme Extraction ✅
 
 [Plan](plans/2026-03-09-hex-ui-theme.md)
 
@@ -46,7 +46,7 @@ Thread theme as parameter into all UI components instead of accessing
 `config.CurrentTheme` global. Extract build wizard's direct `kernel.Build()`
 calls to callbacks, matching the version selector's existing pattern.
 
-## 6. Rootfs Domain
+## 6. Rootfs Domain ✅
 
 [Plan](plans/2026-03-09-hex-rootfs.md)
 
@@ -54,7 +54,7 @@ Remove `Interactive` flag from `CreateOptions`. Require explicit `OutputPath`
 instead of defaulting from config globals. Remove config dependency from
 rootfs package.
 
-## 7. GitHub Client
+## 7. GitHub Client ✅
 
 [Plan](plans/2026-03-09-hex-github.md)
 
@@ -62,7 +62,7 @@ rootfs package.
 from config. Domain packages accept `*github.Client` as parameter instead
 of creating one internally.
 
-## 8. MCP Handler Cleanup
+## 8. MCP Handler Cleanup ✅
 
 [Plan](plans/2026-03-09-hex-mcp.md)
 
