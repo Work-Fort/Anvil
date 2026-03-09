@@ -145,8 +145,8 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Install Task
-        uses: go-task/setup-task@v1
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y libguestfs-dev libelf-dev flex bison bc
@@ -158,7 +158,7 @@ jobs:
           key: kernel-source-${{ matrix.arch }}-${{ needs.check-version.outputs.kernel_version }}
 
       - name: Build CLI
-        run: task go:build
+        run: mise run build
 
       - name: Build kernel
         env:
@@ -192,14 +192,14 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Install Task
-        uses: go-task/setup-task@v1
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
       - name: Install libguestfs
         run: sudo apt-get update && sudo apt-get install -y libguestfs-dev
 
       - name: Build CLI
-        run: task go:build
+        run: mise run build
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4

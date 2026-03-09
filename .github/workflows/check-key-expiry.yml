@@ -27,14 +27,14 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Install Task
-        uses: go-task/setup-task@v1
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
       - name: Install libguestfs (required for CLI compilation)
         run: sudo apt-get update && sudo apt-get install -y libguestfs-dev
 
       - name: Build CLI
-        run: task go:build
+        run: mise run build
 
       - name: Check key expiration
         id: check

@@ -50,15 +50,13 @@ jobs:
           cache: 'pip'
           cache-dependency-path: docs/requirements.txt
 
-      - name: Install Task
-        uses: go-task/setup-task@v1
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
       - name: Build documentation site
         env:
           GITHUB_PAGES: true
-        run: |
-          cd docs
-          task build
+        run: mise run docs:build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
