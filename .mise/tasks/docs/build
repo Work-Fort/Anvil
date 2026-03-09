@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Build complete documentation site (landing + docs)"
+set -euo pipefail
+
+cd docs
+
+# Ensure venv
+if [ ! -f .venv/bin/python ]; then
+  python -m venv .venv
+fi
+
+# Install deps if needed
+if [ ! -f .venv/bin/sphinx-build ] || [ ! -f .venv/bin/sphinx-autobuild ]; then
+  .venv/bin/pip install -r requirements.txt
+fi
+
+SPHINX_OPTS="${SPHINX_OPTS:-}"
+
+# Build landing page
+if [ -d landing ]; then
+  cd landing
+  if [ ! -d node_modules ]; then
+    npm ci
+  fi
+  npm run build
+  cd ..
+fi
+
+# Build sphinx docs
+.venv/bin/sphinx-build $SPHINX_OPTS -b html source docs
+
+# Combine into site/
+rm -rf site
+mkdir -p site
+if [ -d landing/dist ]; then
+  cp -r landing/dist/* site/
+fi
+mkdir -p site/docs
+cp -r docs/* site/docs/
+if [ -f docs/install-anvil.sh ]; then
+  cp docs/install-anvil.sh site/install-anvil.sh
+fi
+
+echo "✓ Documentation site built in docs/site/"

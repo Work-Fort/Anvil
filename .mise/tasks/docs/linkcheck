@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Check documentation for broken links"
+set -euo pipefail
+
+cd docs
+
+if [ ! -f .venv/bin/python ]; then
+  python -m venv .venv
+fi
+if [ ! -f .venv/bin/sphinx-build ]; then
+  .venv/bin/pip install -r requirements.txt
+fi
+
+SPHINX_OPTS="${SPHINX_OPTS:-}"
+.venv/bin/sphinx-build $SPHINX_OPTS -b linkcheck source docs/linkcheck

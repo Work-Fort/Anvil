@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Build release binaries for all supported platforms"
+set -euo pipefail
+
+BUILD_DIR=build
+mkdir -p "$BUILD_DIR"
+
+for arch in amd64 arm64; do
+  echo "=== Building for $arch ==="
+  GOARCH="$arch" mise run build:release
+done

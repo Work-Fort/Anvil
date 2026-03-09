@@ -1,9 +1,7 @@
 # Build directories
-build/
-artifacts/
-bin/
-.task/
-
+/build/
+/artifacts/
+/bin/
 # Local archive of signed releases (local-first development)
 # Automatically populated by sign-artifacts.sh
 # Mirrors GitHub release structure: archive/{version}/
@@ -13,9 +11,6 @@ archive/
 # PGP signing keys
 # (managed by keys/.gitignore)
 .gnupg/
-
-# Task runner (allow local overrides)
-[Tt]askfile.y*ml
 
 # Kernel source tarballs
 *.tar.xz

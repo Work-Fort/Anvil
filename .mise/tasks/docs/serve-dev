@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Serve docs with live auto-reload"
+set -euo pipefail
+
+cd docs
+
+if [ ! -f .venv/bin/python ]; then
+  python -m venv .venv
+fi
+if [ ! -f .venv/bin/sphinx-autobuild ]; then
+  .venv/bin/pip install -r requirements.txt
+fi
+
+.venv/bin/sphinx-autobuild source docs --port 8000

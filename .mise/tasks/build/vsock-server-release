@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Build optimized static vsock server for specific architecture"
+set -euo pipefail
+
+BUILD_DIR=build
+
+case "$(uname -m)" in
+  x86_64) DETECTED_GOARCH="amd64" ;;
+  aarch64|arm64) DETECTED_GOARCH="arm64" ;;
+  *) DETECTED_GOARCH="$(uname -m)" ;;
+esac
+GOARCH="${GOARCH:-$DETECTED_GOARCH}"
+
+mkdir -p "$BUILD_DIR"
+
+echo "Building static vsock server for $GOARCH..."
+CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" go build -mod=mod \
+  -ldflags "-w -s" \
+  -trimpath \
+  -o "$BUILD_DIR/vsock-server-standalone-linux-$GOARCH" \
+  ./cmd/vsock-server-standalone
+echo "✓ Built $BUILD_DIR/vsock-server-standalone-linux-$GOARCH"
+
+echo "Verifying binary is static..."
+if file "$BUILD_DIR/vsock-server-standalone-linux-$GOARCH" | grep -q "statically linked"; then
+  echo "✓ Binary is statically linked"
+else
+  echo "Warning: Binary may not be fully static"
+fi

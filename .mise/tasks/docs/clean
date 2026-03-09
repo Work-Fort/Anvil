@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Clean documentation build artifacts"
+set -euo pipefail
+
+cd docs
+rm -rf docs/ site/
+if [ -d landing/dist ]; then
+  rm -rf landing/dist/
+fi
+echo "✓ Documentation artifacts cleaned"

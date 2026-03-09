@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Build static vsock server for VM rootfs"
+set -euo pipefail
+
+BUILD_DIR=build
+mkdir -p "$BUILD_DIR"
+
+echo "Building static vsock server..."
+CGO_ENABLED=0 go build -mod=mod -ldflags "-w -s" -trimpath \
+  -o "$BUILD_DIR/vsock-server-standalone" ./cmd/vsock-server-standalone
+echo "✓ Built $BUILD_DIR/vsock-server-standalone"
+
+echo "Verifying binary is static..."
+LDD_OUT=$(ldd "$BUILD_DIR/vsock-server-standalone" 2>&1 || true)
+if echo "$LDD_OUT" | grep -q "not a dynamic executable"; then
+  echo "✓ Binary is statically linked"
+else
+  echo "Error: Binary is not static!" && exit 1
+fi

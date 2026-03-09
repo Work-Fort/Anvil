@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Find unused code with staticcheck"
+set -euo pipefail
+
+export PATH="$PATH:$(go env GOPATH)/bin"
+
+if ! command -v staticcheck &> /dev/null; then
+  echo "staticcheck not found. Installing..."
+  go install honnef.co/go/tools/cmd/staticcheck@latest
+fi
+
+echo "Running staticcheck to find unused code..."
+staticcheck ./...
+echo "✓ No unused code found"

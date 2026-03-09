@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Serve full documentation site"
+set -euo pipefail
+
+cd docs
+if [ ! -d site ]; then
+  echo "Site not built. Run 'mise run docs:build' first."
+  exit 1
+fi
+python -m http.server 8000 --directory site

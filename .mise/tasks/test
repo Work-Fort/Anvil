@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Run tests with coverage"
+set -euo pipefail
+
+BUILD_DIR=build
+mkdir -p "$BUILD_DIR"
+
+echo "Running tests..."
+go test -v -race -coverprofile="$BUILD_DIR/coverage.out" ./...
+echo "✓ Tests passed"

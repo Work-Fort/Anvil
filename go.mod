@@ -12,6 +12,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/firecracker-microvm/firecracker-go-sdk v1.0.0
 	github.com/hashicorp/go-version v1.8.0
+	github.com/mark3labs/mcp-go v0.45.0
 	github.com/mdlayher/vsock v1.2.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -54,7 +55,6 @@ require (
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mark3labs/mcp-go v0.45.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect

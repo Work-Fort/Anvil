@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Build and run anvil locally"
+#MISE depends=["build"]
+set -euo pipefail
+
+./build/anvil "$@"

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Remove all build artifacts"
+set -euo pipefail
+
+echo "Cleaning build artifacts..."
+rm -rf build
+echo "✓ Build artifacts cleaned"

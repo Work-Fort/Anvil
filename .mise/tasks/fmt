@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#MISE description="Format Go code with gofmt"
+set -euo pipefail
+
+echo "Formatting Go code..."
+find . -name "*.go" -not -path "./vendor/*" -not -path "./third_party/*" -exec gofmt -w {} +
+echo "✓ Code formatted"
