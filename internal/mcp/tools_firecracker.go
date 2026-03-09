@@ -8,6 +8,7 @@ import (
 
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/firecracker"
+	"github.com/Work-Fort/Anvil/pkg/github"
 	"github.com/Work-Fort/Anvil/pkg/rootfs"
 	gomcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -111,7 +112,8 @@ func handleFirecrackerList(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.C
 
 func handleFirecrackerGet(_ context.Context, req gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
 	version := req.GetString("version", "")
-	if err := firecracker.Download(version, config.GlobalPaths); err != nil {
+	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
+	if err := firecracker.Download(version, client, config.GlobalPaths); err != nil {
 		return errResult(err)
 	}
 	return jsonResult(map[string]any{
@@ -151,7 +153,8 @@ func handleFirecrackerRemove(_ context.Context, req gomcp.CallToolRequest) (*gom
 }
 
 func handleFirecrackerVersions(_ context.Context, _ gomcp.CallToolRequest) (*gomcp.CallToolResult, error) {
-	versions, err := firecracker.ShowVersions(config.GlobalPaths)
+	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
+	versions, err := firecracker.ShowVersions(client, config.GlobalPaths)
 	if err != nil {
 		return errResult(err)
 	}

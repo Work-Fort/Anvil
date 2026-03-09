@@ -28,19 +28,16 @@ type AvailableFirecracker struct {
 }
 
 // Download downloads a Firecracker binary
-func Download(version string, paths *config.Paths) error {
-	return DownloadWithProgress(version, paths, nil, nil)
+func Download(version string, client *github.Client, paths *config.Paths) error {
+	return DownloadWithProgress(version, client, paths, nil, nil)
 }
 
 // DownloadWithProgress downloads a Firecracker binary with progress and status tracking
-func DownloadWithProgress(version string, paths *config.Paths, progressCallback func(float64), statusCallback func(string)) error {
+func DownloadWithProgress(version string, client *github.Client, paths *config.Paths, progressCallback func(float64), statusCallback func(string)) error {
 	arch, err := config.GetArch()
 	if err != nil {
 		return err
 	}
-
-	// Create GitHub client for API and downloads
-	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 
 	// If no version specified, get latest
 	if version == "" {
@@ -217,10 +214,8 @@ func Remove(version string, paths *config.Paths) error {
 }
 
 // ShowVersions returns available Firecracker versions from GitHub with install status.
-func ShowVersions(paths *config.Paths) ([]AvailableFirecracker, error) {
+func ShowVersions(client *github.Client, paths *config.Paths) ([]AvailableFirecracker, error) {
 	log.Debug("Fetching available Firecracker versions from GitHub")
-
-	client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
 	parts := strings.Split(config.FirecrackerRepo, "/")
 	releases, err := client.GetReleases(parts[0], parts[1], 10)
 	if err != nil {

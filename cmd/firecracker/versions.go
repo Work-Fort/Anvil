@@ -7,6 +7,7 @@ import (
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/firecracker"
+	"github.com/Work-Fort/Anvil/pkg/github"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +22,8 @@ func newVersionsCmd() *cobra.Command {
 				return cmdutil.ShowVersionSelector("firecracker")
 			}
 
-			versions, err := firecracker.ShowVersions(config.GlobalPaths)
+			client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
+			versions, err := firecracker.ShowVersions(client, config.GlobalPaths)
 			if err != nil {
 				return err
 			}

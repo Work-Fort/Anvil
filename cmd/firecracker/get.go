@@ -7,6 +7,7 @@ import (
 	"github.com/Work-Fort/Anvil/cmd/cmdutil"
 	"github.com/Work-Fort/Anvil/pkg/config"
 	"github.com/Work-Fort/Anvil/pkg/firecracker"
+	"github.com/Work-Fort/Anvil/pkg/github"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +30,8 @@ If no version is specified, the latest version will be downloaded.`,
 				return cmdutil.ShowVersionSelector("firecracker")
 			}
 
-			if err := firecracker.Download(version, config.GlobalPaths); err != nil {
+			client := github.NewClient(config.GetGitHubToken(), config.GitHubAPI)
+			if err := firecracker.Download(version, client, config.GlobalPaths); err != nil {
 				return err
 			}
 
