@@ -3,85 +3,104 @@ package config
 
 import (
 	"fmt"
+	"image/color"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
-// Theme holds the application color scheme
+// Theme holds the application color palette and provides style builders.
+// Fields use color.Color (lipgloss v2 native type) for direct use in styles.
 type Theme struct {
-	Primary   string // Bright mint green
-	Secondary string // Bright cyan
-	Muted     string // Muted purple-gray
-	Success   string // Success/affirmative color
-	Info      string // Info/neutral color
-	Warning   string // Warning color
-	Error     string // Error/destructive color
+	Primary   color.Color // Active elements, selection highlights
+	Secondary color.Color // Borders, inactive but visible elements
+	Muted     color.Color // Dimmed elements, help text
+	Accent    color.Color // Alerts, unread indicators
+	Text      color.Color // Primary text
+	TextDim   color.Color // Secondary/dimmed text
+	BgDark    color.Color // Dark background areas
+	Success   color.Color // Success states, checkmarks
+	Info      color.Color // Informational states
+	Warning   color.Color // Warning states
+	Error     color.Color // Error states, destructive actions
 }
 
-// CurrentTheme is the active theme used throughout the application
+// CurrentTheme is the active theme used throughout the application.
+// Defaults to hackerman-inspired colors; overridden by Omarchy loader on Omarchy systems.
 var CurrentTheme = Theme{
-	Primary:   "#82FB9C", // Hackerman accent - bright mint green
-	Secondary: "#7cf8f7", // Hackerman color6 - bright cyan
-	Muted:     "#6a6e95", // Hackerman muted - purple-gray
-	Success:   "#82FB9C", // Same as primary for consistency
-	Info:      "#7cf8f7", // Same as secondary for consistency
-	Warning:   "#FFD700", // Gold/yellow for warnings
-	Error:     "#FF6B6B", // Soft red for errors
+	Primary:   lipgloss.Color("#82FB9C"), // Bright mint green
+	Secondary: lipgloss.Color("#7cf8f7"), // Bright cyan
+	Muted:     lipgloss.Color("#6a6e95"), // Purple-gray
+	Accent:    lipgloss.Color("#82FB9C"), // Same as primary
+	Text:      lipgloss.Color("#C8CCD4"), // Light gray text
+	TextDim:   lipgloss.Color("#6B7080"), // Dimmed text
+	BgDark:    lipgloss.Color("#1A1C24"), // Dark panel bg
+	Success:   lipgloss.Color("#82FB9C"), // Bright mint green
+	Info:      lipgloss.Color("#7cf8f7"), // Bright cyan
+	Warning:   lipgloss.Color("#FFD700"), // Gold
+	Error:     lipgloss.Color("#FF6B6B"), // Soft red
 }
 
-// Color getters return lipgloss.Color for easy styling
+// --- Color getters (backward compat — thin wrappers over fields) ---
 
-func (t Theme) GetPrimaryColor() lipgloss.Color {
-	return lipgloss.Color(t.Primary)
+func (t Theme) GetPrimaryColor() color.Color   { return t.Primary }
+func (t Theme) GetSecondaryColor() color.Color  { return t.Secondary }
+func (t Theme) GetMutedColor() color.Color      { return t.Muted }
+func (t Theme) GetAccentColor() color.Color     { return t.Accent }
+func (t Theme) GetTextColor() color.Color       { return t.Text }
+func (t Theme) GetTextDimColor() color.Color    { return t.TextDim }
+func (t Theme) GetBgDarkColor() color.Color     { return t.BgDark }
+func (t Theme) GetSuccessColor() color.Color    { return t.Success }
+func (t Theme) GetInfoColor() color.Color       { return t.Info }
+func (t Theme) GetWarningColor() color.Color    { return t.Warning }
+func (t Theme) GetErrorColor() color.Color      { return t.Error }
+
+// --- Style builders ---
+
+func (t Theme) PrimaryStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.Primary)
 }
 
-func (t Theme) GetSecondaryColor() lipgloss.Color {
-	return lipgloss.Color(t.Secondary)
+func (t Theme) SecondaryStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.Secondary)
 }
 
-func (t Theme) GetMutedColor() lipgloss.Color {
-	return lipgloss.Color(t.Muted)
+func (t Theme) MutedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.Muted)
 }
 
-func (t Theme) GetSuccessColor() lipgloss.Color {
-	return lipgloss.Color(t.Success)
+func (t Theme) AccentStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.Accent)
 }
 
-func (t Theme) GetInfoColor() lipgloss.Color {
-	return lipgloss.Color(t.Info)
+func (t Theme) TextStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.Text)
 }
 
-func (t Theme) GetWarningColor() lipgloss.Color {
-	return lipgloss.Color(t.Warning)
+func (t Theme) TextDimStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.TextDim)
 }
-
-func (t Theme) GetErrorColor() lipgloss.Color {
-	return lipgloss.Color(t.Error)
-}
-
-// Common style builders for consistent UI
 
 func (t Theme) SuccessStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(t.GetSuccessColor()).Bold(true)
+	return lipgloss.NewStyle().Foreground(t.Success).Bold(true)
 }
 
 func (t Theme) InfoStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(t.GetInfoColor())
+	return lipgloss.NewStyle().Foreground(t.Info)
 }
 
 func (t Theme) WarningStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(t.GetWarningColor())
+	return lipgloss.NewStyle().Foreground(t.Warning)
 }
 
 func (t Theme) ErrorStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(t.GetErrorColor())
+	return lipgloss.NewStyle().Foreground(t.Error)
 }
 
 func (t Theme) SubtleStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(t.GetMutedColor())
+	return lipgloss.NewStyle().Foreground(t.Muted)
 }
 
-// Message formatters with theme-appropriate icons
+// --- Message formatters ---
 
 func (t Theme) SuccessMessage(text string) string {
 	return t.SuccessStyle().Render("✓ " + text)
@@ -99,69 +118,71 @@ func (t Theme) ErrorMessage(text string) string {
 	return t.ErrorStyle().Render("✗ " + text)
 }
 
-// Indicator helpers for consistent symbols across UI
+// --- Indicator helpers ---
 
-// ActiveIndicator returns a solid dot for active states
 func (t Theme) ActiveIndicator() string {
 	return t.SuccessStyle().Render("●")
 }
 
-// PendingIndicator returns an empty circle for pending states
 func (t Theme) PendingIndicator() string {
 	return t.SubtleStyle().Render("○")
 }
 
-// WaitingIndicator returns an hourglass for waiting states
 func (t Theme) WaitingIndicator() string {
 	return t.SubtleStyle().Render("⏳")
 }
 
-// RunningIndicator returns a spinner/arrows for running states
 func (t Theme) RunningIndicator() string {
 	return t.InfoStyle().Render("🔄")
 }
 
-// CompleteIndicator returns a checkmark for completed states
 func (t Theme) CompleteIndicator() string {
 	return t.SuccessStyle().Render("✓")
 }
 
-// ErrorIndicator returns an X for error states
 func (t Theme) ErrorIndicator() string {
 	return t.ErrorStyle().Render("✗")
 }
 
-// WarningIndicator returns a warning symbol for warning states
 func (t Theme) WarningIndicator() string {
 	return t.WarningStyle().Render("⚠")
 }
 
-// InfoIndicator returns an info symbol for informational states
 func (t Theme) InfoIndicator() string {
 	return t.InfoStyle().Render("ℹ")
 }
 
-// PaneStyleConfig holds configuration for styled panes
+// --- Key/help styles ---
+
+func (t Theme) KeyStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.Primary).Bold(true)
+}
+
+func (t Theme) KeyDescStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(t.TextDim)
+}
+
+// --- Pane styles ---
+
+// PaneStyleConfig holds configuration for styled panes.
 type PaneStyleConfig struct {
 	Border      lipgloss.Border
-	BorderColor lipgloss.Color
+	BorderColor color.Color
 	Width       int
 	Height      int
 	Padding     [2]int // [vertical, horizontal]
 }
 
-// PaneStyle creates a styled border for panes
-func (t Theme) PaneStyle(config PaneStyleConfig) lipgloss.Style {
+func (t Theme) PaneStyle(cfg PaneStyleConfig) lipgloss.Style {
 	return lipgloss.NewStyle().
-		Border(config.Border).
-		BorderForeground(config.BorderColor).
-		Width(config.Width).
-		Height(config.Height).
-		Padding(config.Padding[0], config.Padding[1])
+		Border(cfg.Border).
+		BorderForeground(cfg.BorderColor).
+		Width(cfg.Width).
+		Height(cfg.Height).
+		Padding(cfg.Padding[0], cfg.Padding[1])
 }
 
-// ActivePaneStyle returns styling for the active pane
-func (t Theme) ActivePaneStyle(width, height int, accentColor lipgloss.Color) lipgloss.Style {
+func (t Theme) ActivePaneStyle(width, height int, accentColor color.Color) lipgloss.Style {
 	return t.PaneStyle(PaneStyleConfig{
 		Border:      lipgloss.ThickBorder(),
 		BorderColor: accentColor,
@@ -171,45 +192,36 @@ func (t Theme) ActivePaneStyle(width, height int, accentColor lipgloss.Color) li
 	})
 }
 
-// InactivePaneStyle returns styling for inactive panes
 func (t Theme) InactivePaneStyle(width, height int) lipgloss.Style {
 	return t.PaneStyle(PaneStyleConfig{
 		Border:      lipgloss.NormalBorder(),
-		BorderColor: t.GetMutedColor(),
+		BorderColor: t.Muted,
 		Width:       width,
 		Height:      height,
 		Padding:     [2]int{0, 1},
 	})
 }
 
-// RenderHeader renders a consistent header banner across all TUIs
-// Format: "  CRACKER-BARREL  ▸  SECTION  ▸  [CONTEXT]  "
+// --- Layout styles ---
+
+// RenderHeader renders a consistent header banner.
+// Format: "  ANVIL  ▸  SECTION  ▸  [CONTEXT]  "
 func (t Theme) RenderHeader(width int, section, context string) string {
-	headerText := fmt.Sprintf("  CRACKER-BARREL  ▸  %s  ▸  [%s]  ", section, context)
+	headerText := fmt.Sprintf("  ANVIL  ▸  %s  ▸  [%s]  ", section, context)
 	return lipgloss.NewStyle().
-		Foreground(t.GetSecondaryColor()).
+		Foreground(t.Secondary).
 		Bold(true).
 		Width(width).
 		Align(lipgloss.Center).
 		Render(headerText)
 }
 
-// RenderFooter renders a consistent footer with box characters
-// Format: "╰─ [content] ─╯"
+// RenderFooter renders a consistent footer with box characters.
 func (t Theme) RenderFooter(width int, content string) string {
 	footerText := "╰─ " + content + " ─╯"
 	return lipgloss.NewStyle().
-		Foreground(t.GetMutedColor()).
+		Foreground(t.Muted).
 		Width(width).
 		Align(lipgloss.Center).
 		Render(footerText)
 }
-
-// TODO: Investigate dynamically pulling theme from Omarchy terminal theme
-// Omarchy themes are defined in ~/.config/omarchy/themes/*.toml
-// We could detect the active theme and parse it to extract colors:
-//   - Read current theme from Omarchy config
-//   - Parse TOML to extract color values
-//   - Map Omarchy color names to our theme struct
-// This would allow the CLI to automatically match the user's terminal theme
-// See: https://github.com/get-virgil/omarchy for theme file format

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/Work-Fort/Anvil/pkg/ui"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/huh"
 )
 

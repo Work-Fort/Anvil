@@ -59,6 +59,9 @@ for organized file storage.`,
 			return err
 		}
 
+		// Apply Omarchy theme if available (silently falls back to defaults)
+		_ = config.LoadOmarchyTheme()
+
 		// Update flag values from Viper (respects config file and env vars)
 		useTUI = config.GetUseTUI()
 

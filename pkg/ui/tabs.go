@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/Work-Fort/Anvil/pkg/config"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/lipgloss/v2"
 )
 
 // TabState represents the state of a tab

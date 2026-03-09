@@ -3,9 +3,9 @@ package ui
 
 import (
 	"github.com/Work-Fort/Anvil/pkg/config"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // LayoutDimensions holds calculated dimensions for a TUI layout
