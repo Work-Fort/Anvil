@@ -14,6 +14,7 @@ import (
 	"github.com/Work-Fort/Anvil/cmd/clean"
 	configCmd "github.com/Work-Fort/Anvil/cmd/config"
 	"github.com/Work-Fort/Anvil/cmd/firecracker"
+	mcpcmd "github.com/Work-Fort/Anvil/cmd/mcp"
 	initcmd "github.com/Work-Fort/Anvil/cmd/init"
 	"github.com/Work-Fort/Anvil/cmd/kernel"
 	"github.com/Work-Fort/Anvil/cmd/signing"
@@ -142,6 +143,7 @@ func init() {
 	rootCmd.AddCommand(update.NewUpdateCmd(Version, DisableUpdate))
 	rootCmd.AddCommand(version.NewVersionCmd(Version))
 	rootCmd.AddCommand(vsock.NewVsockCmd())
+	rootCmd.AddCommand(mcpcmd.NewMCPServerCmd(Version))
 
 	// Set custom help, usage, and error functions
 	rootCmd.SetHelpFunc(styledHelpFunc)

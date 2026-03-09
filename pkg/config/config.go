@@ -100,11 +100,28 @@ func GetPaths() *Paths {
 	}
 }
 
+// userModeOverride forces user mode when true, regardless of cwd.
+// Used by the MCP server's set_user_mode tool.
+var userModeOverride bool
+
 // IsRepoMode returns true when a anvil.yaml exists in the current
 // working directory, meaning the CLI is operating within a managed repository.
 func IsRepoMode() bool {
 	_, err := os.Stat(filepath.Join(".", LocalConfigFile+DefaultConfigExt))
 	return err == nil
+}
+
+// IsUserMode returns true when operating in user mode (XDG paths).
+func IsUserMode() bool {
+	if userModeOverride {
+		return true
+	}
+	return !IsRepoMode()
+}
+
+// SetUserModeOverride forces user mode regardless of cwd.
+func SetUserModeOverride(override bool) {
+	userModeOverride = override
 }
 
 // InitDirs creates all necessary directories
