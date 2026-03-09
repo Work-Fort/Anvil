@@ -4,6 +4,7 @@
 
 ## Prerequisites
 
+- [ ] `ANVIL_SIGNING_PASSWORD` is set in the environment (inherited by CLI and MCP server)
 - [ ] `mise ci` passes (lint, vet, staticcheck, tests)
 - [ ] Binary rebuilt and installed (`mise run build && mise run install:local`)
 - [ ] MCP server restarted (verify with `get_context` version)
@@ -18,7 +19,7 @@ Test in a temp repo so you never modify production config:
 ```bash
 export CONFIGDIR=$(mktemp -d)
 cd "$CONFIGDIR"
-ANVIL_SIGNING_PASSWORD=test_password anvil init \
+anvil init \
   --key-name "QA Config Test" --key-email "qa@test.com" --use-tui=false
 ```
 
@@ -116,14 +117,24 @@ Pick a recent stable version (e.g. the latest from step 2).
 
 ## 4. Signing
 
-### CLI
+Test in an isolated temp repo so you never touch production keys:
 
-- [ ] `anvil signing list` — shows current key(s)
+```bash
+export TESTDIR=$(mktemp -d)
+cd "$TESTDIR"
+anvil init \
+  --key-name "QA Test" --key-email "qa@test.com" --use-tui=false
+```
+
+### CLI (run from $TESTDIR)
+
+- [ ] `anvil signing list` — shows key(s)
 - [ ] `anvil signing check-expiry` — reports all_valid or warns
 - [ ] `anvil signing check-expiry --days 365` — broader check window
 
 ### MCP
 
+- [ ] `set_repo_root` path=`$TESTDIR` — switches context to test repo
 - [ ] `signing_list` — returns keys array with key_id, fingerprint, name, email
 - [ ] `signing_check_expiry` — all_valid=true
 - [ ] `signing_check_expiry` days=365 — broader window check
@@ -134,15 +145,6 @@ Pick a recent stable version (e.g. the latest from step 2).
 
 ### Sign & Verify
 
-Test in an isolated temp repo so you never touch production keys:
-
-```bash
-export TESTDIR=$(mktemp -d)
-cd "$TESTDIR"
-ANVIL_SIGNING_PASSWORD=test_password anvil init \
-  --key-name "QA Test" --key-email "qa@test.com" --use-tui=false
-```
-
 Create test artifacts to sign:
 
 ```bash
@@ -151,14 +153,10 @@ echo "hello" > "$TESTDIR/artifacts/test.bin"
 sha256sum "$TESTDIR/artifacts/test.bin" > "$TESTDIR/artifacts/SHA256SUMS"
 ```
 
-Run sign & verify from the test repo directory:
-
-- [ ] CLI `cd "$TESTDIR" && ANVIL_SIGNING_PASSWORD=test_password anvil signing sign artifacts/` — exits 0
+- [ ] CLI `cd "$TESTDIR" && anvil signing sign artifacts/` — exits 0
 - [ ] CLI `cd "$TESTDIR" && anvil signing verify artifacts/` — exits 0
-- [ ] MCP: `set_repo_root` path=`$TESTDIR` — switches context to test repo
-- [ ] MCP: `signing_sign` path=`$TESTDIR/artifacts` — status=signed (requires `ANVIL_SIGNING_PASSWORD=test_password` in MCP server env)
+- [ ] MCP: `signing_sign` path=`$TESTDIR/artifacts` — status=signed
 - [ ] MCP: `signing_verify` path=`$TESTDIR/artifacts` — verified=true
-- [ ] MCP: `set_repo_root` path=`<original_repo>` — switch back
 
 Clean up:
 
@@ -206,11 +204,20 @@ rm -rf "$TESTDIR"
 
 ---
 
-## 6. Archive & Sign Release (repo mode only)
+## 6. Archive & Sign Release
 
-If in a repo with `anvil.yaml`:
+Test in an isolated temp repo:
 
-- [ ] `set_repo_root` path=`<repo>` — switches to repo mode
+```bash
+export ARCHIVEDIR=$(mktemp -d)
+cd "$ARCHIVEDIR"
+anvil init \
+  --key-name "QA Archive Test" --key-email "qa-archive@test.com" --use-tui=false
+```
+
+### Archive (MCP)
+
+- [ ] `set_repo_root` path=`$ARCHIVEDIR` — switches to test repo
 - [ ] `archive_kernel` version=`<version>` arch=`x86_64` — archives x86_64 kernel
 - [ ] `archive_kernel` version=`<version>` arch=`aarch64` — archives aarch64 kernel
 - [ ] `archive_list` — shows both archived kernels
@@ -219,38 +226,19 @@ If in a repo with `anvil.yaml`:
 
 ### Sign & Verify archived kernels
 
-Test signing in an isolated temp repo so you never touch production keys:
-
-```bash
-export SIGNDIR=$(mktemp -d)
-cd "$SIGNDIR"
-ANVIL_SIGNING_PASSWORD=test_password anvil init \
-  --key-name "QA Sign Test" --key-email "qa-sign@test.com" --use-tui=false
-```
-
-Copy archived artifacts into the test repo for signing:
-
-```bash
-cp -r <repo>/archive "$SIGNDIR/archive"
-```
-
-Run sign & verify from the test repo directory:
-
-- [ ] CLI `cd "$SIGNDIR" && ANVIL_SIGNING_PASSWORD=test_password anvil signing sign archive/x86_64/<version>` — exits 0
-- [ ] CLI `cd "$SIGNDIR" && anvil signing verify archive/x86_64/<version>` — exits 0
-- [ ] CLI `cd "$SIGNDIR" && ANVIL_SIGNING_PASSWORD=test_password anvil signing sign archive/aarch64/<version>` — exits 0
-- [ ] CLI `cd "$SIGNDIR" && anvil signing verify archive/aarch64/<version>` — exits 0
-- [ ] MCP: `set_repo_root` path=`$SIGNDIR` — switches context to test repo
-- [ ] MCP: `signing_sign` path=`$SIGNDIR/archive/x86_64/<version>` — status=signed
-- [ ] MCP: `signing_verify` path=`$SIGNDIR/archive/x86_64/<version>` — verified=true
-- [ ] MCP: `signing_sign` path=`$SIGNDIR/archive/aarch64/<version>` — status=signed
-- [ ] MCP: `signing_verify` path=`$SIGNDIR/archive/aarch64/<version>` — verified=true
-- [ ] MCP: `set_repo_root` path=`<original_repo>` — switch back
+- [ ] CLI `cd "$ARCHIVEDIR" && anvil signing sign archive/x86_64/<version>` — exits 0
+- [ ] CLI `cd "$ARCHIVEDIR" && anvil signing verify archive/x86_64/<version>` — exits 0
+- [ ] CLI `cd "$ARCHIVEDIR" && anvil signing sign archive/aarch64/<version>` — exits 0
+- [ ] CLI `cd "$ARCHIVEDIR" && anvil signing verify archive/aarch64/<version>` — exits 0
+- [ ] MCP: `signing_sign` path=`$ARCHIVEDIR/archive/x86_64/<version>` — status=signed
+- [ ] MCP: `signing_verify` path=`$ARCHIVEDIR/archive/x86_64/<version>` — verified=true
+- [ ] MCP: `signing_sign` path=`$ARCHIVEDIR/archive/aarch64/<version>` — status=signed
+- [ ] MCP: `signing_verify` path=`$ARCHIVEDIR/archive/aarch64/<version>` — verified=true
 
 Clean up:
 
 ```bash
-rm -rf "$SIGNDIR"
+rm -rf "$ARCHIVEDIR"
 ```
 
 ---
@@ -282,12 +270,12 @@ If multiple kernel/firecracker versions installed:
 
 ## 8. Init Command (fresh repo test)
 
-Test in a temporary directory (use `ANVIL_SIGNING_PASSWORD` so the key is encrypted):
+Test in a temporary directory:
 
 ```bash
 INITDIR=$(mktemp -d)
 cd "$INITDIR"
-ANVIL_SIGNING_PASSWORD=test_password anvil init \
+anvil init \
   --key-name "Test" --key-email "test@test.com" --use-tui=false
 ```
 
@@ -303,11 +291,24 @@ Clean up temp directory after.
 
 ## 9. MCP Context Switching
 
+```bash
+export CTXDIR=$(mktemp -d)
+cd "$CTXDIR"
+anvil init \
+  --key-name "QA Context Test" --key-email "qa-ctx@test.com" --use-tui=false
+```
+
 - [ ] `get_context` — shows current mode
-- [ ] `set_repo_root` path=`<repo>` — switches to repo mode
+- [ ] `set_repo_root` path=`$CTXDIR` — switches to repo mode
 - [ ] `get_context` — mode=repo, paths reflect repo
 - [ ] `set_user_mode` — switches back to user mode
 - [ ] `get_context` — mode=user, paths reflect XDG
+
+Clean up:
+
+```bash
+rm -rf "$CTXDIR"
+```
 
 ---
 
