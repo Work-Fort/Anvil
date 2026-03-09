@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "anvil": {
+      "command": "go",
+      "args": ["run", ".", "mcp-server"],
+      "env": {}
+    }
+  }
+}
