@@ -21,7 +21,7 @@ permissions:
 jobs:
   check-version:
     name: Check Kernel Version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       kernel_version: ${{ steps.get_version.outputs.version }}
       should_build: ${{ steps.decide_build.outputs.should_build }}
@@ -131,9 +131,9 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: ubuntu-latest
+            runner: ubuntu-26.04
           - arch: aarch64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
       fail-fast: false
 
     steps:
@@ -179,7 +179,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [check-version, build]
     if: needs.check-version.outputs.should_build == 'true'
 

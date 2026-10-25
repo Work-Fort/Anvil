@@ -36,19 +36,19 @@ Vendor libguestfs golang bindings into your Go project.
 
 Options:
   --output DIR              Target directory for vendored bindings (default: third_party/libguestfs.org/guestfs)
-  --version VERSION         libguestfs version to vendor (default: 1.52.0)
+  --version VERSION         libguestfs version to vendor (default: 1.58.1)
   --skip-verify             Skip GPG signature verification (not recommended)
   --help                    Show this help message
 
 Examples:
-  $0                                                    # Use default version (1.52.0), vendor to default location
+  $0                                                    # Use default version (1.58.1), vendor to default location
   $0 --output internal/libguestfs                       # Default version, custom location
   $0 --version 1.58.0                                   # Specific version
   $0 --output myvendor/guestfs --version 1.58.0         # Both options
 
 Environment Variables:
   VENDOR_DIR                Output directory (overridden by --output)
-  VERSION                   libguestfs version (default: 1.52.0, overridden by --version)
+  VERSION                   libguestfs version (default: 1.58.1, overridden by --version)
 
 The script tries system packages first (Ubuntu/Debian golang-guestfs-dev),
 then falls back to building from source (Arch Linux and others).
@@ -58,7 +58,7 @@ EOF
 
 # Set defaults
 VENDOR_DIR="${VENDOR_DIR:-third_party/libguestfs.org/guestfs}"
-LIBGUESTFS_VERSION="${VERSION:-1.52.0}"
+LIBGUESTFS_VERSION="${VERSION:-1.58.1}"
 SKIP_VERIFY="${SKIP_VERIFY:-false}"
 TEMP_BUILD_DIR=""
 

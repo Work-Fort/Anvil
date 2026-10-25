@@ -2,11 +2,11 @@
 
 # Vendored libguestfs Golang Bindings
 
-These are the official golang bindings for libguestfs, version 1.52.0.
+These are the official golang bindings for libguestfs, version 1.58.1.
 
 ## Source
 
-- Generated from: libguestfs 1.52.0
+- Generated from: libguestfs 1.58.1
 - License: LGPL-2.1+ (compatible with permissive licenses)
 - Upstream: https://libguestfs.org/
 

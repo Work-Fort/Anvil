@@ -12,7 +12,7 @@ permissions:
 jobs:
   tag:
     name: Create Version Tag
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       new_tag: ${{ steps.tag_version.outputs.new_tag }}
       changelog: ${{ steps.tag_version.outputs.changelog }}
@@ -54,9 +54,9 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            runner: ubuntu-latest
+            runner: ubuntu-26.04
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
       fail-fast: false
 
     steps:
@@ -106,7 +106,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [tag, build]
     if: needs.tag.outputs.should_release == 'true'
 
@@ -262,7 +262,7 @@ jobs:
 
   aur:
     name: Publish to AUR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [tag, release]
     if: needs.tag.outputs.should_release == 'true'
 

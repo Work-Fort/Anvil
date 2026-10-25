@@ -59,7 +59,7 @@ task libguestfs:help
    - First tries to detect system libguestfs version using pkg-config
    - Falls back to distro-specific methods (dpkg, pacman) if pkg-config unavailable
    - If system version not found, queries https://download.libguestfs.org/ for latest stable
-   - Falls back to 1.52.0 if all detection fails (Ubuntu 24.04 LTS version for cross-distro compatibility)
+   - Falls back to 1.58.1 if all detection fails (Ubuntu 26.04 LTS version for cross-distro compatibility)
    - This ensures vendored bindings match your installed libguestfs library
 
 2. **Try system packages first** (Ubuntu/Debian)

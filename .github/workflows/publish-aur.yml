@@ -17,7 +17,7 @@ permissions:
 jobs:
   publish:
     name: Update AUR Package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # Only run for CLI releases, not kernel releases
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/cli-v')
 

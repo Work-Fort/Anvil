@@ -30,7 +30,7 @@ permissions:
 jobs:
   build:
     name: Build Documentation Site
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
@@ -71,7 +71,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: build
 
     steps:

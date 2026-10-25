@@ -3,7 +3,7 @@
 #MISE description="Vendor official libguestfs golang bindings (LGPL-2.1+)"
 set -euo pipefail
 
-LIBGUESTFS_VERSION="${LIBGUESTFS_VERSION:-1.52.0}"
+LIBGUESTFS_VERSION="${LIBGUESTFS_VERSION:-1.58.1}"
 LIBGUESTFS_VENDOR_DIR="${LIBGUESTFS_VENDOR_DIR:-third_party/libguestfs.org/guestfs}"
 
 ./scripts/libguestfs/vendor-bindings.sh --output "$LIBGUESTFS_VENDOR_DIR" --version "$LIBGUESTFS_VERSION"
